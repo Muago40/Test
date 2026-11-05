@@ -1,6 +1,7 @@
 // Construit dist/medocplanner-claude.html : l'application en un seul fichier,
 // prête à être publiée comme page claude.ai (scripts et styles intégrés).
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 
 const ORDRE = [
   "js/plateforme.js", "js/ui.js", "js/data/medicaments.js", "js/data/interactions.js",
@@ -33,6 +34,10 @@ ${js}
 </script>
 `;
 mkdirSync("dist", { recursive: true });
+// Vérification syntaxique du code assemblé (noms en double, etc.) avant d'écrire la page
+writeFileSync("dist/bundle-check.mjs", js);
+try { execFileSync(process.execPath, ["--check", "dist/bundle-check.mjs"], { stdio: "pipe" }); }
+catch (e) { console.error(String(e.stderr)); process.exit(1); }
+finally { rmSync("dist/bundle-check.mjs", { force: true }); }
 writeFileSync("dist/medocplanner-claude.html", page);
-if (process.argv.includes("--check")) writeFileSync("dist/bundle-check.mjs", js); // vérification syntaxique
 console.log("dist/medocplanner-claude.html", (page.length / 1024).toFixed(0), "Ko");

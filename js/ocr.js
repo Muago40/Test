@@ -55,7 +55,47 @@ export async function ocrLocal(canvas, onProgres = () => {}) {
   const { data } = await window.Tesseract.recognize(c, "fra", {
     logger: (m) => { if (m.status === "recognizing text") onProgres(Math.round(m.progress * 100)); },
   });
-  return data.text;
+  return reconstruireTableau(data) || data.text;
+}
+
+const COLONNES = ["matin", "midi", "soir", "coucher"];
+const sansAccent = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9/½]/g, "");
+
+/**
+ * Ordonnance présentée en tableau (colonnes Matin / Midi / Soir / Coucher) :
+ * l'OCR perd la position des « 1 » dans les colonnes. On la retrouve grâce aux
+ * coordonnées des mots, et on réécrit chaque ligne avec le moment en toutes lettres
+ * (ex. « Tahor 40mg 1 soir »).
+ */
+export function reconstruireTableau(data) {
+  const lignes = (data.lines || []).filter((l) => l.words?.length);
+  if (!lignes.length) return null;
+  const centre = (w) => (w.bbox.x0 + w.bbox.x1) / 2;
+  // Ligne d'en-tête : celle qui contient le plus de noms de colonnes
+  let entete = null;
+  for (const l of lignes) {
+    const cols = {};
+    for (const w of l.words) { const k = sansAccent(w.text); if (COLONNES.includes(k)) cols[k] = centre(w); }
+    if (Object.keys(cols).length >= 2 && (!entete || Object.keys(cols).length > Object.keys(entete.cols).length)) entete = { ligne: l, cols };
+  }
+  if (!entete) return null;
+  const positions = Object.entries(entete.cols);
+  const largeur = positions.length > 1 ? Math.abs(positions[1][1] - positions[0][1]) : 200;
+  const sortie = [];
+  for (const l of lignes) {
+    if (l === entete.ligne) { sortie.push(l.text.trim()); continue; }
+    const mots = l.words.map((w) => {
+      const k = sansAccent(w.text);
+      if (/^(\d(?:[.,]5)?|1\/2|½)$/.test(k) && l.bbox.y0 > entete.ligne.bbox.y0) {
+        let meilleur = null;
+        for (const [nom, x] of positions) { const d = Math.abs(centre(w) - x); if (!meilleur || d < meilleur.d) meilleur = { nom, d }; }
+        if (meilleur && meilleur.d < largeur * 0.75) return `${w.text} ${meilleur.nom}`;
+      }
+      return w.text;
+    });
+    sortie.push(mots.join(" "));
+  }
+  return sortie.join("\n");
 }
 
 // ─────────────── Claude (optionnel) ───────────────
@@ -162,7 +202,14 @@ export async function lireOrdonnanceIA(cle, photo) {
   const r = await demander({
     cle, image: photo.blob, imageBase64: photo.base64, niveau: "complex",
     systeme: "Tu es un assistant de lecture d'ordonnances pour une application d'aide à l'observance. Tu transcris fidèlement ; tu ne poses pas de diagnostic.",
-    consigne: "Voici la photo d'une ordonnance médicale française. Extrais chaque médicament prescrit avec sa posologie. Si un élément est illisible ou incertain, indique-le dans 'remarques' plutôt que de deviner. N'invente aucun médicament. Si l'image n'est pas une ordonnance, renvoie une liste vide.",
+    consigne: `Voici la photo d'une ordonnance ou d'un plan de prise médical français (parfois photographié sur un écran, avec reflets ou de travers).
+Extrais CHAQUE médicament présent, sans en oublier aucun : parcours le document ligne par ligne jusqu'en bas, y compris les lignes isolées en bas de tableau.
+- Tableau avec colonnes Matin / Midi / Soir / Coucher : un chiffre dans une colonne = quantité à ce moment-là ; repère bien dans quelle colonne se trouve chaque chiffre.
+- Texte dans une colonne ou en remarque (« le gère » = le patient gère lui-même, « après les repas », « si diarrhées », « si douleur ») : mets-le dans 'remarques' ; « si … » ou « le gère » sans chiffre = siBesoin vrai.
+- Un nom commercial sans dosage reste un médicament à extraire.
+- Si un élément est illisible ou incertain, extrais quand même la ligne et indique le doute dans 'remarques'. N'invente aucun médicament.
+Avant de répondre, compte les lignes de médicaments du document et vérifie que ta liste en contient autant.
+Si l'image n'est ni une ordonnance ni un plan de prise, renvoie une liste vide.`,
     schema: SCHEMA_ORDONNANCE,
   });
   if (!Array.isArray(r?.medicaments)) throw new Error("Réponse inattendue de l'IA.");

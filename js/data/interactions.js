@@ -226,6 +226,13 @@ export const REGLES = [
     risque: "Le valproate est très toxique pour le fœtus : une contraception efficace est indispensable.",
     conduite: "Vérifier avec le médecin que la contraception est adaptée." },
 
+  { a: ["nitre"], b: ["hypotenseur", "iec", "ara2", "diuretique", "inhibiteur_calcique"], niveau: "APEC",
+    risque: "Addition des effets sur la tension : risque d'hypotension et de malaise.",
+    conduite: "Se lever progressivement ; s'asseoir pour utiliser la trinitrine." },
+  { a: ["diltiazem", "verapamil"], b: ["simvastatine"], niveau: "PE",
+    risque: "Augmentation de la simvastatine : risque musculaire (rhabdomyolyse).",
+    conduite: "Ne pas dépasser 20 mg/j de simvastatine ou choisir une autre statine (avis médical)." },
+
   // ── Doublons ──
   { a: ["paracetamol"], b: ["paracetamol"], niveau: "AD",
     risque: "Deux médicaments contenant du paracétamol : risque de surdosage et d'atteinte hépatique grave.",

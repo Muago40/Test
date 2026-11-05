@@ -84,8 +84,11 @@ export function extrairePosologie(bloc) {
     remarques: [],
   };
 
-  const dos = bloc.match(/(\d+(?:[.,]\d+)?)\s*(mg|g|µg|mcg|ui|ml|%)\b/i);
-  if (dos) res.dosage = dos[1].replace(".", ",") + " " + dos[2].toLowerCase();
+  const dos = bloc.match(/(\d+(?:[.,]\d+)?)\s*(mg|g|µg|mcg|ui|ml|%)(?:\s*\/\s*(\d+(?:[.,]\d+)?)\s*(mg|g|µg|mcg|ui|ml)?)?(?![a-z])/i);
+  if (dos) {
+    const u = (x) => (x.toLowerCase() === "ui" ? "UI" : x.toLowerCase());
+    res.dosage = dos[1].replace(".", ",") + " " + u(dos[2]) + (dos[3] ? "/" + dos[3].replace(".", ",") + " " + u(dos[4] || dos[2]) : "");
+  }
 
   const formes = "(comprimes?|cp|cps|gelules?|gel|sachets?|cuilleres?|cuill|bouffees?|gouttes?|ampoules?|suppositoires?|suppo|applications?|doses?|injections?|pulverisations?|capsules?|lyocs?|pipettes?|patchs?|unidoses?)";
   const q = t.match(new RegExp("(\\d+(?:[.,]\\d+)?|un|une|deux|trois|quatre|demi|1/2)\\s*" + formes));
@@ -150,7 +153,34 @@ export function extrairePosologie(bloc) {
   if (/(au cours|pendant|au milieu|a la fin) d[ue]s? repas/.test(t)) res.remarques.push("Pendant le repas");
   if (/avant (le|les) repas/.test(t)) res.remarques.push("Avant le repas");
 
-  if (!res.moments.length && !res.heures.length && !res.siBesoin) res.moments = ["matin"];
+  // « Le gère » : le patient gère lui-même la prise
+  const gere = /\ble gere\b|\bil gere\b|\belle gere\b|\bgere seul/.test(t);
+  if (gere) res.remarques.push("Géré par le patient");
+  if (/apres (les|le|chaque) repas/.test(t)) res.remarques.push("Après les repas");
+  const siDiarrhee = t.match(/\bsi (diarrhees?|douleurs?|fievre|nausees?|constipation|brulures?|besoin)\b/);
+  if (siDiarrhee) { res.siBesoin = res.siBesoin || !res.moments.length; if (!/besoin/.test(siDiarrhee[1])) res.remarques.push("Si " + ({ diarrhee: "diarrhée", diarrhees: "diarrhée", douleur: "douleur", douleurs: "douleur", fievre: "fièvre", nausee: "nausées", nausees: "nausées", brulure: "brûlures", brulures: "brûlures" }[siDiarrhee[1]] || siDiarrhee[1])); }
+
+  // Tableau (plan de prise) : chiffres isolés dans les colonnes Matin / Midi / Soir / Coucher
+  if (!res.moments.length && !res.heures.length) {
+    const sansDosage = t
+      .replace(/\d+(?:[.,]\d+)?\s*(?:mg|g|µg|mcg|ui|ml|%)\b(?:\s*\/\s*\d+(?:[.,]\d+)?\s*(?:mg|g|µg|mcg|ui|ml)?\b)?/g, " ")
+      .replace(/\d{1,2}\/\d{1,2}\/\d{2,4}/g, " ")
+      .replace(/(?:pendant|durant|pdt|sur|qsp)\s*\d+\s*\w+/g, " ");
+    const colonnes = (sansDosage.match(/(?:^|\s)(1\/2|½|\d(?:[.,]5)?)(?=\s|$)/g) || []).map((x) => nombre(x.trim().replace("½", "1/2")));
+    if (colonnes.length && colonnes.length <= 4) {
+      res.moments = { 1: ["matin"], 2: ["matin", "soir"], 3: ["matin", "midi", "soir"], 4: ["matin", "midi", "soir", "coucher"] }[colonnes.length];
+      if (colonnes.every((v) => v === colonnes[0])) res.quantite = colonnes[0];
+      if (colonnes.length < 3) res.remarques.push("Moments à vérifier");
+      res.siBesoin = false;
+    } else if (gere) {
+      res.siBesoin = true;
+    }
+  }
+
+  if (!res.moments.length && !res.heures.length && !res.siBesoin) {
+    res.moments = ["matin"];
+    res.remarques.push("Moments à vérifier");
+  }
   return res;
 }
 
@@ -158,6 +188,28 @@ export function extrairePosologie(bloc) {
 function nomAffiche(det) {
   if (!det.exact || det.trouve === normaliser(det.med.dci)) return det.med.dci;
   return det.trouve.replace(/(^|[ -])([a-z])/g, (_, s, c) => s + c.toUpperCase());
+}
+
+// Mots qui commencent une ligne sans être un nom de médicament
+const MOTS_NON_MEDICAMENT = new Set(("nom matin midi soir coucher traitement traitements docteur dr date signature ordonnance " +
+  "mme madame monsieur mr mlle patient patiente ne nee adresse tel telephone rpps finess medecin cabinet rue avenue " +
+  "pendant prendre avant apres au aux si en le la les un une puis renouveler renouvelable qsp durant toutes fois jours " +
+  "semaines mois comprime comprimes gelule gelules sachet sachets cuillere ampoule boite boites quantite posologie " +
+  "a de du et ou par pour total age poids taille allergie allergies remarques page").split(" "));
+
+/** Ligne qui ressemble à un médicament absent de la base (nom + dosage, ou nom + colonnes de chiffres). */
+export function detecterInconnu(ligne) {
+  const m = ligne.trim().match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’-]{3,}(?:\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’-]{2,}){0,2})(.*)$/);
+  if (!m) return null;
+  const premier = normaliser(m[1].split(/\s+/)[0]);
+  if (MOTS_NON_MEDICAMENT.has(premier)) return null;
+  const reste = m[2];
+  const dosage = /\d+(?:[.,]\d+)?\s*(?:mg|g|µg|mcg|ui|ml)\b/i.test(reste);
+  const colonnes = /^[A-ZÀ-Ý]/.test(m[1]) && /(?:^|\s)(?:1\/2|½|\d)(?=\s|$)/.test(reste);
+  if (!dosage && !colonnes) return null;
+  // retire les mots de posologie éventuellement collés au nom
+  const nom = m[1].split(/\s+/).filter((w) => !MOTS_NON_MEDICAMENT.has(normaliser(w))).join(" ");
+  return nom ? { med: null, trouve: nom, exact: false, inconnu: true } : null;
 }
 
 /**
@@ -169,7 +221,7 @@ export function analyserOrdonnance(texte) {
   const lignes = texte.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const blocs = [];
   for (const ligne of lignes) {
-    const det = detecterMedicament(ligne);
+    const det = detecterMedicament(ligne) || detecterInconnu(ligne);
     if (det) blocs.push({ det, lignes: [ligne] });
     else if (blocs.length) {
       const dernier = blocs[blocs.length - 1];
@@ -180,10 +232,10 @@ export function analyserOrdonnance(texte) {
     const bloc = lignes.join(" ");
     const poso = extrairePosologie(bloc);
     return {
-      nom: nomAffiche(det) + (poso.dosage ? " " + poso.dosage : ""),
-      medId: det.med.id,
+      nom: (det.inconnu ? det.trouve : nomAffiche(det)) + (poso.dosage ? " " + poso.dosage : ""),
+      medId: det.med?.id || null,
       texteSource: bloc,
-      certitude: det.exact ? "haute" : "moyenne",
+      certitude: det.exact && !poso.remarques.includes("Moments à vérifier") ? "haute" : "moyenne",
       ...poso,
     };
   });
