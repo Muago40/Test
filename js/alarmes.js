@@ -41,7 +41,7 @@ export async function notifier(titre, corps, tag) {
     alerteInterne(titre, corps);
     return;
   }
-  const options = { body: corps, tag, icon: "icons/icon.svg", badge: "icons/icon.svg", requireInteraction: true, renotify: true };
+  const options = { body: corps, tag, icon: "icons/icon-192.png", badge: "icons/icon-192.png", requireInteraction: true, renotify: true };
   try {
     const reg = await navigator.serviceWorker?.getRegistration();
     if (reg) await reg.showNotification(titre, options);
