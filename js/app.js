@@ -1,7 +1,11 @@
 import { etat, abonner, sauver, aujourdhui, ajouterTraitement, majTraitement, supprimerTraitement,
-  basculerPrise, clePrise, toutEffacer, connecterCompte, compteConnecte, remplacerDonnees } from "./store.js";
+  basculerPrise, clePrise, toutEffacer, connecterCompte, compteConnecte, remplacerDonnees,
+  profilActif, ajouterProfil, majProfil, supprimerProfil, choisirProfil, importerTraitements } from "./store.js";
+import { encoderTransfert, decoderTransfert, adresseApplication, lienTransfert, codeDansAdresse, qrSVG,
+  scannerPossible, scannerQR } from "./transfert.js";
+import { documentImpression, pageAutonome, STYLE_IMPRESSION } from "./impression.js";
 import { estClaude, capacite, iaIntegreeImages } from "./plateforme.js";
-import { informer, confirmer } from "./ui.js";
+import { informer, confirmer, esc } from "./ui.js";
 import { MEDICAMENTS, trouverParId } from "./data/medicaments.js";
 import { analyserInteractions, NIVEAUX } from "./data/interactions.js";
 import { analyserOrdonnance, detecterMedicament, MOMENTS } from "./parser.js";
@@ -10,7 +14,6 @@ import { prisesDuJour, resumePosologie, libelleQuantite, libelleMoment, dateFin,
 import { planifierAlarmes, demanderPermission, notifier, telechargerICS, notificationsSupportees, nombreAlarmesProgrammees, horairesAlarmes } from "./alarmes.js";
 
 const $ = (s, el = document) => el.querySelector(s);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
 
 let vue = "planning";
@@ -20,6 +23,9 @@ let photo = null;
 let interactionsIA = null;
 let moteur = null;        // "integree" | "cle" | null
 let lectureImageIA = false;
+let importEnAttente = null; // traitement reçu par QR code / lien, à confirmer
+let scan = null;            // lecture de QR code en cours
+const estPro = () => etat.reglages.mode === "pro";
 
 async function majMoteurIA() {
   moteur = await moteurIA(etat.reglages.cleApi);
@@ -37,7 +43,11 @@ document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click
 
 function rendre() {
   const main = $("#contenu");
-  main.innerHTML = { ordonnance: vueOrdonnance, planning: vuePlanning, fiches: vueFiches, interactions: vueInteractions, reglages: vueReglages }[vue]();
+  main.innerHTML = importEnAttente ? vueImport() :
+    { ordonnance: vueOrdonnance, planning: vuePlanning, fiches: vueFiches, interactions: vueInteractions, reglages: vueReglages }[vue]();
+  const choix = $("#choix-patient");
+  choix.hidden = !estPro();
+  if (estPro()) choix.textContent = "👤 " + profilActif().nom + " ▾";
   const badge = $("#badge-interactions");
   const n = analyserInteractions(itemsInteractions()).filter((i) => NIVEAUX[i.niveau].rang >= 3).length;
   badge.textContent = n || "";
@@ -67,6 +77,14 @@ function vueOrdonnance() {
         "La lecture d'image n'est pas disponible ici : saisissez le texte de l'ordonnance ci-dessous."}</p>` : ""}
     <div id="progression"></div>
   </section>
+
+  ${!estPro() && scannerPossible() ? `
+  <section class="carte">
+    <h2>📲 Traitement transmis par un soignant</h2>
+    <p class="aide">Votre infirmier, médecin ou pharmacien vous montre un QR code : scannez-le pour recevoir votre planning.</p>
+    <button class="bouton large" data-action="scanner">📷 Scanner le QR code</button>
+    <div id="zone-scan"></div>
+  </section>` : ""}
 
   <details class="carte">
     <summary>⌨️ Saisir ou coller le texte de l'ordonnance</summary>
@@ -247,12 +265,14 @@ function vuePlanning() {
 function vueFiches() {
   if (!etat.traitements.length) return `<section class="carte vide"><p>Ajoutez des traitements pour voir leurs fiches.</p></section>`;
   return `
-  <section class="carte no-print">
-    <h2>📘 Fiches de mes traitements</h2>
+  <section class="carte">
+    <h2>📘 Fiches ${estPro() ? "de " + esc(profilActif().nom) : "de mes traitements"}</h2>
     <p class="aide">Synthèse indicative. Lisez toujours la notice et demandez conseil à votre pharmacien.</p>
-    ${estClaude ? "" : `<button class="bouton" data-action="imprimer">🖨️ Imprimer / PDF</button>`}
+    <div class="ligne-boutons">
+      <button class="bouton principal" data-action="ouvrir-impression">🖨️ Imprimer pour le patient</button>
+      ${estPro() ? `<button class="bouton principal" data-action="transmettre">📲 Envoyer sur son téléphone</button>` : ""}
+    </div>
   </section>
-  <h1 class="print-only">Mes traitements — ${new Date().toLocaleDateString("fr-FR")}</h1>
   ${etat.traitements.map((t) => {
     const f = t.medId ? trouverParId(t.medId) : t.ficheIA;
     return `
@@ -367,6 +387,19 @@ function vueReglages() {
   </section>`}
 
   <section class="carte">
+    <h2>🩺 Mode professionnel</h2>
+    <label class="interrupteur"><input type="checkbox" id="opt-pro" data-action="mode-pro" ${estPro() ? "checked" : ""}> Je suis soignant : gérer plusieurs patients</label>
+    ${estPro() ? `
+      <p class="aide">Chaque patient a son dossier (bouton en haut de l'écran). Les rappels sont désactivés dans ce mode. Les données restent sur cet appareil${compteConnecte() ? " et dans votre espace privé claude.ai" : ""} : protégez-le par un code et ne le prêtez pas.</p>
+      <label>Votre nom (imprimé sur les documents)<input id="pro-nom" data-action="pro" data-champ="nom" value="${esc(r.pro.nom)}" placeholder="ex. Nicolas R., infirmier"></label>
+      <label>Contact (imprimé sur les documents)<input id="pro-contact" data-action="pro" data-champ="contact" value="${esc(r.pro.contact)}" placeholder="ex. 06 00 00 00 00"></label>
+      <label>Adresse de l'appli pour vos patients (QR code)
+        <input id="adresse-publique" data-action="adresse" value="${esc(r.adressePublique)}" placeholder="${esc(adresseApplication("") || "https://votre-compte.github.io/Test/")}">
+      </label>
+      <p class="aide">${estClaude ? "Obligatoire ici : vos patients n'ont pas accès à cette page claude.ai. Mettez l'adresse GitHub Pages de l'appli." : "Laissez vide pour utiliser l'adresse actuelle."}</p>` : ""}
+  </section>
+
+  <section class="carte">
     <h2>🔒 Données</h2>
     <p class="aide">${compteConnecte() ? "Vos données sont sauvegardées de façon privée sur votre compte claude.ai (personne d'autre n'y a accès) et sur cet appareil." :
       "Toutes vos données restent dans ce navigateur. Aucune donnée n'est envoyée, sauf la photo lors d'une lecture par IA."}</p>
@@ -378,6 +411,190 @@ function vueReglages() {
   </section>
 
   <section class="carte"><p class="aide">Base locale : ${MEDICAMENTS.length} médicaments courants. Cette application est une aide à l'organisation et ne remplace pas l'avis d'un professionnel de santé.</p></section>`;
+}
+
+// ─────────────────────── Import d'un traitement transmis ───────────────────────
+function vueImport() {
+  const imp = importEnAttente;
+  const existant = etat.traitements.length > 0;
+  return `
+  <section class="carte surligne">
+    <h2>📲 Traitement reçu</h2>
+    <p>${imp.patient && imp.patient !== "Moi" ? `Pour <strong>${esc(imp.patient)}</strong>, ` : ""}transmis le ${imp.date ? new Date(imp.date + "T12:00:00").toLocaleDateString("fr-FR") : "?"}.</p>
+    <ul class="liste">
+      ${imp.traitements.map((t) => `<li><strong>${esc(t.nom)}</strong><div class="sous">${esc(resumePosologie(t, { ...etat.reglages, heures: { ...etat.reglages.heures, ...imp.heures } }))}</div></li>`).join("")}
+    </ul>
+    <p class="aide">Vérifiez que ce traitement correspond bien à votre ordonnance.</p>
+    <div class="ligne-boutons">
+      ${existant ? `<button class="bouton principal" data-action="import" data-mode="remplacer">Remplacer mon traitement actuel</button>
+        <button class="bouton" data-action="import" data-mode="ajouter">Ajouter à mon traitement</button>` :
+        `<button class="bouton principal" data-action="import" data-mode="remplacer">Enregistrer ce traitement</button>`}
+      <button class="bouton" data-action="import" data-mode="annuler">Annuler</button>
+    </div>
+  </section>`;
+}
+
+async function recevoirCode(texte) {
+  try {
+    importEnAttente = await decoderTransfert(texte);
+    allerA("planning");
+  } catch {
+    informer("Ce QR code ne contient pas de traitement MédocPlanner.");
+  }
+}
+
+// ─────────────────────── Patients (mode professionnel) ───────────────────────
+function ouvrirPatients() {
+  const dlg = $("#dialogue");
+  const liste = [...etat.profils].sort((a, b) => a.nom.localeCompare(b.nom));
+  dlg.innerHTML = `
+    <h2>Mes patients</h2>
+    <ul class="liste">
+      ${liste.map((p) => `
+        <li class="${p.id === etat.profilActif ? "patient-actif" : ""}">
+          <div class="ligne-titre"><strong>${esc(p.nom)}</strong>${p.id === etat.profilActif ? '<span class="pastille info">ouvert</span>' : ""}</div>
+          <div class="sous">${p.traitements.length} traitement(s)${p.naissance ? " · né(e) le " + new Date(p.naissance + "T12:00:00").toLocaleDateString("fr-FR") : ""}${p.allergies ? " · ⚠ " + esc(p.allergies) : ""}</div>
+          <div class="ligne-boutons petit">
+            ${p.id !== etat.profilActif ? `<button class="bouton principal" data-patient="ouvrir" data-id="${p.id}">Ouvrir</button>` : ""}
+            <button class="bouton" data-patient="modifier" data-id="${p.id}">Modifier</button>
+            <button class="bouton" data-patient="supprimer" data-id="${p.id}">Supprimer</button>
+          </div>
+        </li>`).join("")}
+    </ul>
+    <div class="ligne-boutons">
+      <button class="bouton" data-patient="fermer">Fermer</button>
+      <button class="bouton principal" data-patient="nouveau">➕ Nouveau patient</button>
+    </div>`;
+  dlg.onclick = async (e) => {
+    const b = e.target.closest("[data-patient]");
+    if (!b) return;
+    const id = b.dataset.id;
+    switch (b.dataset.patient) {
+      case "fermer": dlg.close(); break;
+      case "ouvrir": choisirProfil(id); dlg.close(); allerA("planning"); informer("Dossier ouvert : " + profilActif().nom); break;
+      case "nouveau": dlg.onclick = null; ouvrirFichePatient(null); break;
+      case "modifier": dlg.onclick = null; ouvrirFichePatient(etat.profils.find((p) => p.id === id)); break;
+      case "supprimer": {
+        const p = etat.profils.find((x) => x.id === id);
+        dlg.close();
+        if (await confirmer(`Supprimer le dossier de ${p.nom} et tout son historique ?`, "Supprimer")) supprimerProfil(id);
+        ouvrirPatients();
+        break;
+      }
+    }
+  };
+  if (!dlg.open) dlg.showModal();
+}
+
+function ouvrirFichePatient(p) {
+  const dlg = $("#dialogue");
+  dlg.innerHTML = `
+  <form id="form-patient">
+    <h2>${p ? "Modifier le patient" : "Nouveau patient"}</h2>
+    <label>Nom et prénom<input name="nom" required value="${esc(p?.nom || "")}" autocomplete="off"></label>
+    <label>Date de naissance<input name="naissance" type="date" value="${esc(p?.naissance || "")}"></label>
+    <label>Allergies connues<input name="allergies" value="${esc(p?.allergies || "")}" placeholder="ex. pénicilline"></label>
+    <label>Notes<textarea name="notes" rows="2">${esc(p?.notes || "")}</textarea></label>
+    <div class="ligne-boutons">
+      <button type="button" class="bouton" id="retour-patients">Retour</button>
+      <button type="submit" class="bouton principal">Enregistrer</button>
+    </div>
+  </form>`;
+  $("#retour-patients", dlg).onclick = () => ouvrirPatients();
+  $("#form-patient", dlg).onsubmit = (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const champs = { nom: String(fd.get("nom")).trim(), naissance: fd.get("naissance") || "", allergies: String(fd.get("allergies")).trim(), notes: String(fd.get("notes")).trim() };
+    if (p) majProfil(p.id, champs); else ajouterProfil(champs);
+    dlg.close();
+    allerA(p ? vue : "ordonnance");
+    if (!p) informer("Dossier créé : scannez ou saisissez son ordonnance.");
+  };
+  if (!dlg.open) dlg.showModal();
+}
+
+// ─────────────────────── Transmission au téléphone du patient ───────────────────────
+async function ouvrirTransmission() {
+  const dlg = $("#dialogue");
+  const profil = profilActif();
+  const adresse = adresseApplication(etat.reglages.adressePublique);
+  if (!adresse) {
+    dlg.innerHTML = `<h2>Envoyer sur le téléphone du patient</h2>
+      <p class="aide">Indiquez d'abord l'adresse publique de l'application (par exemple votre page GitHub Pages) dans l'onglet Alarmes, rubrique « Mode professionnel ».</p>
+      <div class="ligne-boutons"><button class="bouton principal" id="fermer-dlg">OK</button></div>`;
+    $("#fermer-dlg", dlg).onclick = () => dlg.close();
+    dlg.showModal();
+    return;
+  }
+  const code = await encoderTransfert(profil, etat.reglages.heures);
+  const lien = lienTransfert(adresse, code);
+  let qr;
+  try { qr = qrSVG(lien); } catch (e) { qr = `<p class="alerte warning">${esc(e.message)}</p>`; }
+  dlg.innerHTML = `
+    <h2>Envoyer sur le téléphone de ${esc(profil.nom)}</h2>
+    <ol class="etapes">
+      <li>Le patient ouvre l'appareil photo de son téléphone (ou le bouton « Scanner le QR code » de l'appli s'il l'a déjà installée).</li>
+      <li>Il vise ce QR code et ouvre le lien.</li>
+      <li>Il vérifie le traitement, l'enregistre, puis ajoute l'appli à son écran d'accueil.</li>
+    </ol>
+    <div class="qr">${qr}</div>
+    <p class="aide">${profil.traitements.length} traitement(s). Le traitement est contenu dans le QR code lui-même : rien n'est stocké sur un serveur.</p>
+    <p class="aide">Sur iPhone, si le patient a déjà installé l'appli sur l'écran d'accueil, il doit scanner depuis l'appli (bouton « Scanner le QR code »), sinon le traitement s'enregistre dans Safari et pas dans l'appli.</p>
+    <div class="ligne-boutons">
+      <button class="bouton" id="copier-lien">Copier le lien</button>
+      <button class="bouton principal" id="fermer-dlg">Fermer</button>
+    </div>`;
+  $("#fermer-dlg", dlg).onclick = () => dlg.close();
+  $("#copier-lien", dlg).onclick = async () => {
+    try { await navigator.clipboard.writeText(lien); informer("Lien copié : vous pouvez l'envoyer par SMS ou e-mail."); }
+    catch { informer("Copie impossible sur cet appareil."); }
+  };
+  dlg.showModal();
+}
+
+// ─────────────────────── Impression ───────────────────────
+function ouvrirImpression() {
+  const dlg = $("#dialogue");
+  dlg.innerHTML = `
+  <form id="form-impression">
+    <h2>Imprimer pour ${estPro() ? esc(profilActif().nom) : "le patient"}</h2>
+    <p class="aide">Document en gros caractères, pratique pour les patients sans téléphone.</p>
+    <label class="case"><input type="checkbox" name="plan" checked> Plan de prise (tableau matin / midi / soir / coucher)</label>
+    <label class="case"><input type="checkbox" name="calendrier" checked> Calendrier de prises à cocher</label>
+    <label>Durée du calendrier
+      <select name="jours"><option value="7">1 semaine</option><option value="14">2 semaines</option><option value="28">4 semaines</option></select>
+    </label>
+    <label class="case"><input type="checkbox" name="precautions" checked> Précautions et interactions</label>
+    <label class="case"><input type="checkbox" name="fiches" checked> Fiches : indications, effets indésirables, conseils</label>
+    ${estClaude ? `<p class="aide">Ici, l'impression directe n'est pas possible : le document est enregistré sur votre appareil, ouvrez-le puis imprimez-le.</p>` : ""}
+    <div class="ligne-boutons">
+      <button type="button" class="bouton" id="annuler-imp">Annuler</button>
+      <button type="submit" class="bouton principal">${estClaude ? "Enregistrer le document" : "Imprimer"}</button>
+    </div>
+  </form>`;
+  $("#annuler-imp", dlg).onclick = () => dlg.close();
+  $("#form-impression", dlg).onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const options = { plan: fd.has("plan"), calendrier: fd.has("calendrier"), precautions: fd.has("precautions"), fiches: fd.has("fiches"), jours: Number(fd.get("jours")) };
+    dlg.close();
+    const profil = profilActif();
+    if (estClaude) {
+      const downloads = await capacite("downloads");
+      if (!downloads) { informer("L'enregistrement n'est pas disponible dans cette vue."); return; }
+      const nom = "plan-de-traitement-" + (profil.nom || "patient").normalize("NFD").replace(/[^\w]+/g, "-").toLowerCase() + ".html";
+      try { await downloads.save({ filename: nom, data: pageAutonome(profil, etat.reglages, options) }); }
+      catch (err) { if (err?.code !== "declined") informer("Enregistrement impossible : " + (err?.message || err)); }
+      return;
+    }
+    const zone = $("#impression");
+    zone.innerHTML = `<style>${STYLE_IMPRESSION}</style>` + documentImpression(profil, etat.reglages, options);
+    document.body.classList.add("mode-impression");
+    const fin = () => { document.body.classList.remove("mode-impression"); zone.innerHTML = ""; window.removeEventListener("afterprint", fin); };
+    window.addEventListener("afterprint", fin);
+    setTimeout(() => window.print(), 50);
+  };
+  dlg.showModal();
 }
 
 // ─────────────────────── Formulaire traitement ───────────────────────
@@ -548,6 +765,27 @@ document.addEventListener("click", async (e) => {
     case "effacer":
       if (await confirmer("Effacer tous les traitements, l'historique et les réglages ?", "Tout effacer")) { await toutEffacer(); informer("Données effacées."); }
       break;
+    case "ouvrir-impression": ouvrirImpression(); break;
+    case "transmettre": ouvrirTransmission(); break;
+    case "patients": ouvrirPatients(); break;
+    case "scanner": {
+      if (scan) { scan.arreter(); scan = null; el.textContent = "📷 Scanner le QR code"; break; }
+      el.textContent = "Arrêter";
+      scan = scannerQR($("#zone-scan"));
+      try { const txt = await scan.resultat; scan = null; await recevoirCode(txt); }
+      catch (err) { scan = null; el.textContent = "📷 Scanner le QR code"; informer("Caméra indisponible : " + (err?.message || err)); }
+      break;
+    }
+    case "import": {
+      const mode = el.dataset.mode;
+      if (mode !== "annuler") {
+        importerTraitements(importEnAttente.traitements, { remplacer: mode === "remplacer", heures: importEnAttente.heures });
+        informer("Traitement enregistré. Pensez à ajouter l'appli à votre écran d'accueil.", 7000);
+      }
+      importEnAttente = null;
+      allerA("planning");
+      break;
+    }
     case "fermer-avertissement": etat.reglages.avertissementLu = true; sauver(); $("#avertissement").remove(); break;
   }
 });
@@ -580,6 +818,14 @@ document.addEventListener("change", async (e) => {
     case "son": etat.reglages.son = el.checked; sauver(); break;
     case "rappel": etat.reglages.rappelMinutes = Number(el.value); sauver(); break;
     case "heure": if (el.value) { etat.reglages.heures[el.dataset.moment] = el.value; sauver(); } break;
+    case "mode-pro":
+      etat.reglages.mode = el.checked ? "pro" : "patient";
+      if (el.checked && profilActif().nom === "Moi" && !profilActif().traitements.length) profilActif().nom = "Patient 1";
+      sauver();
+      if (el.checked) informer("Mode soignant activé : créez vos patients avec le bouton en haut de l'écran.", 6000);
+      break;
+    case "pro": etat.reglages.pro[el.dataset.champ] = el.value.trim(); sauver(); break;
+    case "adresse": etat.reglages.adressePublique = el.value.trim(); sauver(); break;
   }
 });
 
@@ -603,8 +849,16 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") { planifierAlarmes(); if (vue === "planning") rendre(); }
 });
 
+$("#choix-patient").addEventListener("click", ouvrirPatients);
+
 planifierAlarmes();
-allerA(etat.traitements.length ? "planning" : "ordonnance");
+const codeRecu = codeDansAdresse();
+if (codeRecu) {
+  history.replaceState(null, "", location.pathname + location.search); // le traitement ne reste pas dans l'historique
+  recevoirCode(codeRecu);
+} else {
+  allerA(etat.traitements.length ? "planning" : "ordonnance");
+}
 
 // Fonctions qui dépendent de la plateforme : activées dès qu'elles répondent
 majMoteurIA().then(() => { if (vue !== "planning") rendre(); });

@@ -12,6 +12,16 @@ Application web installable (PWA) pour organiser ses traitements à partir d'une
 | ⚖️ **Interactions** | Moteur de règles selon les niveaux du Thésaurus ANSM (contre-indication, association déconseillée, précaution d'emploi, à prendre en compte) : saignement, hyperkaliémie, QT, CYP3A4, chélation (fer/calcium), sérotoninergiques, sédatifs, doublons (ex. deux sources de paracétamol)… + analyse complémentaire par IA. |
 | ⏰ **Alarmes** | Notifications avec son/vibration et relance si la prise n'est pas cochée, **et** export `.ics` vers l'agenda du téléphone (alarmes fiables même application fermée). |
 
+### 🩺 Mode soignant (infirmier, médecin, pharmacien)
+
+Onglet **Alarmes → Mode professionnel** :
+
+- **un dossier par patient** (nom, date de naissance, allergies, notes), choisi avec le bouton en haut de l'écran ; les données restent sur l'appareil du soignant ;
+- **envoi du traitement sur le téléphone du patient par QR code** : le traitement est compressé dans le lien lui-même (après le `#`, jamais transmis au serveur), aucun serveur ni hébergement de données de santé n'est nécessaire. Le patient scanne avec l'appareil photo, vérifie puis enregistre ; s'il a déjà l'appli, il utilise le bouton « Scanner le QR code » (indispensable sur iPhone, où l'appli de l'écran d'accueil a un stockage séparé de Safari) ;
+- **impression pour les patients sans téléphone** : plan de prise (matin / midi / soir / coucher), calendrier de prises à cocher (1 à 4 semaines), précautions et interactions, fiches (indications, effets indésirables, conseils), nom et contact du soignant.
+
+> Le suivi à distance (voir si le patient a pris ses médicaments) n'est volontairement pas proposé : il nécessiterait un serveur, un hébergement agréé HDS et une conformité RGPD / dispositif médical.
+
 Toutes les données restent dans le navigateur (localStorage). Seule la photo est envoyée à l'API Anthropic si vous choisissez la lecture IA.
 
 ## Lancer
@@ -45,6 +55,9 @@ index.html, css/styles.css, sw.js, manifest.webmanifest
 js/app.js              interface et actions
 js/plateforme.js       détection web / claude.ai
 js/ui.js               messages et confirmations
+js/transfert.js        envoi du traitement par QR code / lien, lecture de QR code
+js/impression.js       document imprimable (plan de prise, calendrier, fiches)
+js/vendor/             qrcode-generator (MIT), jsQR (Apache 2.0)
 outils/build-claude.mjs  génération de la version claude.ai
 js/parser.js           extraction médicaments + posologie depuis le texte
 js/ocr.js              Tesseract.js et appels Claude (vision, fiches, interactions)

@@ -3,6 +3,8 @@
 
 let minuteur = null;
 
+export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
 export function informer(message, duree = 5000) {
   const el = document.getElementById("toast");
   if (!el) return;

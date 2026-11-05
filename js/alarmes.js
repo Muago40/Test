@@ -69,7 +69,7 @@ function aHeure(iso, hhmm) {
 export function planifierAlarmes() {
   minuteurs.forEach(clearTimeout);
   minuteurs = [];
-  if (!etat.reglages.alarmes) return;
+  if (!etat.reglages.alarmes || etat.reglages.mode === "pro") return;
   const maintenant = Date.now();
   const demain = new Date(); demain.setDate(demain.getDate() + 1);
   for (const iso of [aujourdhui(), aujourdhui(demain)]) {
