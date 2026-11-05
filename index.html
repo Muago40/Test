@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MédocPlanner</title>
+  <meta name="description" content="Scannez votre ordonnance : planning des prises, fiches médicaments, interactions et alarmes.">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="entete">
+    <span class="logo" aria-hidden="true">💊</span>
+    <h1>MédocPlanner</h1>
+    <button id="choix-patient" class="choix-patient" hidden></button>
+  </header>
+
+  <main id="contenu" aria-live="polite"></main>
+
+  <nav aria-label="Navigation principale">
+    <button data-vue="ordonnance"><span>📷</span>Ordonnance</button>
+    <button data-vue="planning"><span>🗓️</span>Planning</button>
+    <button data-vue="fiches"><span>📘</span>Fiches</button>
+    <button data-vue="interactions"><span>⚖️</span>Interactions<b id="badge-interactions" class="badge" hidden></b></button>
+    <button data-vue="reglages"><span>⏰</span>Alarmes</button>
+  </nav>
+
+  <dialog id="dialogue"></dialog>
+  <dialog id="confirmation" class="confirmation"></dialog>
+  <div id="toast" role="alert"></div>
+  <div id="impression"></div>
+
+  <script src="js/vendor/qrcode.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

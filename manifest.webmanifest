@@ -1,0 +1,14 @@
+{
+  "name": "MédocPlanner – mes traitements",
+  "short_name": "MédocPlanner",
+  "description": "Scannez votre ordonnance : planning des prises, fiches médicaments, interactions et alarmes.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f1f5f4",
+  "theme_color": "#0f766e",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
