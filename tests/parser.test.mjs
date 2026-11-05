@@ -39,3 +39,31 @@ assert.ok(i3.some(i => /paracétamol/.test(i.risque)));
 // ids uniques
 assert.equal(new Set(MEDICAMENTS.map(m => m.id)).size, MEDICAMENTS.length);
 console.log("OK", MEDICAMENTS.length, "médicaments");
+
+// Plan de prise en tableau (OCR sans positions) : aucun médicament ne doit disparaître
+const tableau = analyserOrdonnance(`Traitement de Mme
+Nom Matin Midi Soir Coucher
+Lercanidipine 1
+20mg
+Optruma 60mg 1
+Lodoz 1
+10mg/6.25mg
+Aprovel 150mg 1
+Tahor 40mg 1
+Ideos 1 1 Le gère
+500mg/400Ui
+Kardégic 75mg 1
+Doliprane 100mg Le gère
+Gaviscon 1 1 1 Après les repas, le gère
+Smecta 1 1 1 Si diarrhées, le gère`);
+assert.equal(tableau.length, 10, "10 médicaments attendus : " + tableau.map((t) => t.nom).join(", "));
+assert.ok(tableau.find((t) => /Optruma/.test(t.nom)));
+assert.equal(tableau.find((t) => /Doliprane/.test(t.nom)).siBesoin, true);
+assert.deepEqual(tableau.find((t) => /Gaviscon/.test(t.nom)).moments, ["matin", "midi", "soir"]);
+assert.deepEqual(tableau.find((t) => /Ideos/.test(t.nom)).moments, ["matin", "soir"]);
+// Avec moments écrits (reconstruction des colonnes)
+const recon = analyserOrdonnance("Tahor 40mg 1 soir\nKardégic 75mg 1 midi");
+assert.deepEqual(recon.map((t) => t.moments[0]), ["soir", "midi"]);
+// Lignes non médicamenteuses ignorées
+assert.equal(analyserOrdonnance("Docteur Martin 12 rue des Lilas\nPendant 10 jours 1 fois").length, 0);
+console.log("OK tableau");

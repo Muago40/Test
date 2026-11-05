@@ -241,3 +241,15 @@ dialog.confirmation p { margin: 0 0 .5rem; }
 .choix-photo { display: grid; gap: .5rem; }
 label.bouton { position: relative; overflow: hidden; }
 .champ-fichier { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 0; }
+
+/* Plan de prise à l'écran */
+.defile-x { overflow-x: auto; }
+table.table-plan.ecran { width: 100%; border-collapse: collapse; font-size: .9rem; min-width: 480px; }
+.table-plan.ecran th, .table-plan.ecran td { border: 1px solid var(--bord); padding: .45rem .35rem; text-align: center; }
+.table-plan.ecran th { background: var(--primaire-doux); font-size: .85rem; }
+.table-plan.ecran th .h { display: block; font-weight: normal; color: var(--doux); font-size: .75rem; }
+.table-plan.ecran td.col-nom { text-align: left; font-weight: 700; }
+.table-plan.ecran td.dose { font-weight: 800; font-size: 1.05rem; color: var(--primaire); }
+.table-plan.ecran td.dose .u { display: block; font-size: .7rem; font-weight: 400; color: var(--doux); }
+.table-plan.ecran td.col-rem { text-align: left; font-size: .8rem; color: var(--doux); }
+.table-plan.ecran tr.si-besoin td { background: var(--fond); }

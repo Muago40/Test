@@ -3,7 +3,7 @@ import { etat, abonner, sauver, aujourdhui, ajouterTraitement, majTraitement, su
   profilActif, ajouterProfil, majProfil, supprimerProfil, choisirProfil, importerTraitements } from "./store.js";
 import { encoderTransfert, decoderTransfert, adresseApplication, lienTransfert, codeDansAdresse, qrSVG,
   scannerPossible, scannerQR } from "./transfert.js";
-import { documentImpression, pageAutonome, STYLE_IMPRESSION } from "./impression.js";
+import { documentImpression, pageAutonome, STYLE_IMPRESSION, tablePlan } from "./impression.js";
 import { estClaude, capacite, iaIntegreeImages } from "./plateforme.js";
 import { informer, confirmer, esc } from "./ui.js";
 import { MEDICAMENTS, trouverParId } from "./data/medicaments.js";
@@ -279,6 +279,10 @@ function vueFiches() {
       <button class="bouton principal" data-action="ouvrir-impression">🖨️ Imprimer pour le patient</button>
       ${estPro() ? `<button class="bouton principal" data-action="transmettre">📲 Envoyer sur son téléphone</button>` : ""}
     </div>
+  </section>
+  <section class="carte">
+    <h3>Plan de prise</h3>
+    <div class="defile-x">${tablePlan(etat.traitements, etat.reglages, { classe: "table-plan ecran" })}</div>
   </section>
   ${etat.traitements.map((t) => {
     const f = t.medId ? trouverParId(t.medId) : t.ficheIA;
@@ -565,14 +569,14 @@ function ouvrirImpression() {
   dlg.innerHTML = `
   <form id="form-impression">
     <h2>Imprimer pour ${estPro() ? esc(profilActif().nom) : "le patient"}</h2>
-    <p class="aide">Document en gros caractères, pratique pour les patients sans téléphone.</p>
-    <label class="case"><input type="checkbox" name="plan" checked> Plan de prise (tableau matin / midi / soir / coucher)</label>
-    <label class="case"><input type="checkbox" name="calendrier" checked> Calendrier de prises à cocher</label>
+    <p class="aide">Imprimez en <strong>recto-verso</strong> : le plan de prise d'un côté, les fiches explicatives de l'autre.</p>
+    <label class="case"><input type="checkbox" name="plan" checked> Recto : plan de prise (Nom / Matin / Midi / Soir / Coucher / Remarques)</label>
+    <label class="case"><input type="checkbox" name="fiches" checked> Verso : fiches (à quoi il sert, effets possibles, comment le prendre)</label>
+    <label class="case"><input type="checkbox" name="precautions" checked> Verso : précautions et interactions</label>
+    <label class="case"><input type="checkbox" name="calendrier"> Page en plus : calendrier de prises à cocher</label>
     <label>Durée du calendrier
       <select name="jours"><option value="7">1 semaine</option><option value="14">2 semaines</option><option value="28">4 semaines</option></select>
     </label>
-    <label class="case"><input type="checkbox" name="precautions" checked> Précautions et interactions</label>
-    <label class="case"><input type="checkbox" name="fiches" checked> Fiches : indications, effets indésirables, conseils</label>
     ${estClaude ? `<p class="aide">Ici, l'impression directe n'est pas possible : le document est enregistré sur votre appareil, ouvrez-le puis imprimez-le.</p>` : ""}
     <div class="ligne-boutons">
       <button type="button" class="bouton" id="annuler-imp">Annuler</button>
