@@ -62,10 +62,17 @@ function vueOrdonnance() {
   <section class="carte">
     <h2>📷 Scanner une ordonnance</h2>
     <p class="aide">Prenez l'ordonnance en photo bien à plat, éclairée, cadrée sur la liste des médicaments.</p>
-    <label class="bouton principal large">
-      <input type="file" accept="image/*" capture="environment" id="photo" hidden>
-      Prendre / choisir une photo
-    </label>
+    <div class="choix-photo">
+      <label class="bouton principal large">
+        <input type="file" accept="image/*" capture="environment" id="photo" class="champ-fichier">
+        📷 Prendre une photo
+      </label>
+      <label class="bouton large">
+        <input type="file" accept="image/*" id="photo-galerie" class="champ-fichier">
+        🖼️ Choisir une photo existante
+      </label>
+    </div>
+    ${photo ? "" : `<p class="aide">Si l'appareil photo ne s'ouvre pas : prenez l'ordonnance en photo avec l'appareil photo du téléphone, puis utilisez « Choisir une photo existante ».${estClaude ? " Ouvrir la page dans Safari ou Chrome plutôt que dans l'application Claude aide aussi." : ""}</p>`}
     ${photo ? `<img src="${photo.dataUrl}" class="apercu" alt="Ordonnance">` : ""}
     ${photo ? `
       <div class="ligne-boutons">
@@ -792,10 +799,16 @@ document.addEventListener("click", async (e) => {
 
 document.addEventListener("change", async (e) => {
   const el = e.target;
-  if (el.id === "photo" && el.files[0]) {
-    photo = await preparerImage(el.files[0]);
-    brouillon = [];
-    rendre();
+  if ((el.id === "photo" || el.id === "photo-galerie") && el.files[0]) {
+    const fichier = el.files[0];
+    el.value = ""; // permet de reprendre la même photo
+    try {
+      photo = await preparerImage(fichier);
+      brouillon = [];
+      rendre();
+    } catch {
+      informer("Cette image n'a pas pu être ouverte. Essayez une photo au format JPEG ou PNG.", 7000);
+    }
     return;
   }
   if (el.id === "import" && el.files[0]) {

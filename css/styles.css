@@ -236,3 +236,8 @@ dialog.confirmation p { margin: 0 0 .5rem; }
   body.mode-impression #impression { display: block; }
   @page { margin: 12mm; }
 }
+
+/* Champs de fichier : présents (pas display:none) pour que tous les téléphones ouvrent le sélecteur */
+.choix-photo { display: grid; gap: .5rem; }
+label.bouton { position: relative; overflow: hidden; }
+.champ-fichier { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 0; }
