@@ -569,10 +569,10 @@ function ouvrirImpression() {
   dlg.innerHTML = `
   <form id="form-impression">
     <h2>Imprimer pour ${estPro() ? esc(profilActif().nom) : "le patient"}</h2>
-    <p class="aide">Imprimez en <strong>recto-verso</strong> : le plan de prise d'un côté, les fiches explicatives de l'autre.</p>
-    <label class="case"><input type="checkbox" name="plan" checked> Recto : plan de prise (Nom / Matin / Midi / Soir / Coucher / Remarques)</label>
-    <label class="case"><input type="checkbox" name="fiches" checked> Verso : fiches (à quoi il sert, effets possibles, comment le prendre)</label>
-    <label class="case"><input type="checkbox" name="precautions" checked> Verso : précautions et interactions</label>
+    <p class="aide">Le plan de prise et les fiches explicatives sont imprimés sur des feuilles séparées.</p>
+    <label class="case"><input type="checkbox" name="plan" checked> Feuille 1 : plan de prise (Nom / Matin / Midi / Soir / Coucher)</label>
+    <label class="case"><input type="checkbox" name="fiches" checked> Feuille 2 : fiches (à quoi il sert, effets possibles, comment le prendre)</label>
+    <label class="case"><input type="checkbox" name="precautions" checked> Feuille 2 : précautions et interactions</label>
     <label class="case"><input type="checkbox" name="calendrier"> Page en plus : calendrier de prises à cocher</label>
     <label>Durée du calendrier
       <select name="jours"><option value="7">1 semaine</option><option value="14">2 semaines</option><option value="28">4 semaines</option></select>

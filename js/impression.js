@@ -1,6 +1,6 @@
 // Document imprimable pour les patients (notamment sans téléphone).
-// Recto : plan de prise en tableau (Nom | Matin | Midi | Soir | Coucher | Remarques).
-// Verso : fiches explicatives (indications, effets indésirables, conseils) et précautions.
+// Feuille 1 : plan de prise en tableau (Nom | Matin | Midi | Soir | Coucher).
+// Feuille 2 : fiches explicatives (indications, effets indésirables, conseils) et précautions.
 // En option : calendrier de prises à cocher.
 import { trouverParId } from "./data/medicaments.js";
 import { analyserInteractions, NIVEAUX } from "./data/interactions.js";
@@ -11,7 +11,6 @@ import { esc } from "./ui.js";
 
 const dateFR = (d) => (d instanceof Date ? d : new Date(d + "T12:00:00")).toLocaleDateString("fr-FR");
 const JOURS_COURTS = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
-const JOURS_LONGS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
 const UNITES_SIMPLES = ["comprimé", "gélule", "prise", "capsule"];
 
 export const ficheDe = (t) => (t.medId ? trouverParId(t.medId) : t.ficheIA) || null;
@@ -28,30 +27,19 @@ function quantiteCourte(t) {
   return q === 0.5 ? "½" : q === 0.25 ? "¼" : String(q).replace(".", ",");
 }
 
-function remarquesPlan(t) {
-  const r = [];
-  if (t.siBesoin) r.push("Si besoin");
-  if (t.heures?.length) r.push(`${libelleQuantite(t)} à ${t.heures.join(", ")}`);
-  if (t.hebdomadaire) r.push(`1 fois par semaine (le ${JOURS_LONGS[new Date(t.debut + "T12:00:00").getDay()]})`);
-  for (const x of t.remarques || []) if (x !== "Moments à vérifier" && !r.includes(x)) r.push(x);
-  const fin = dateFin(t);
-  if (fin) r.push("Jusqu'au " + dateFR(fin));
-  return r.join(". ");
-}
-
 /** Tableau du plan de prise (utilisé à l'écran et à l'impression). */
 export function tablePlan(traitements, reglages, { classe = "table-plan" } = {}) {
   const liste = traitementsEnCours(traitements);
   if (!liste.length) return "";
   return `
   <table class="${classe}">
-    <thead><tr><th class="col-nom">Nom</th>${MOMENTS.map((m) => `<th>${libelleMoment(m)}<span class="h">${reglages.heures[m]}</span></th>`).join("")}<th class="col-rem">Remarques</th></tr></thead>
+    <thead><tr><th class="col-nom">Nom</th>${MOMENTS.map((m) => `<th>${libelleMoment(m)}<span class="h">${reglages.heures[m]}</span></th>`).join("")}</tr></thead>
     <tbody>
     ${liste.map((t) => {
       const unite = UNITES_SIMPLES.includes(t.unite) ? "" : t.unite;
       const cellules = MOMENTS.map((m) => (!t.heures?.length && t.moments?.includes(m))
         ? `<td class="dose">${quantiteCourte(t)}${unite ? `<span class="u">${esc(unite)}</span>` : ""}</td>` : `<td></td>`).join("");
-      return `<tr${t.siBesoin ? ' class="si-besoin"' : ""}><td class="col-nom">${esc(t.nom)}</td>${cellules}<td class="col-rem">${esc(remarquesPlan(t))}</td></tr>`;
+      return `<tr${t.siBesoin ? ' class="si-besoin"' : ""}><td class="col-nom">${esc(t.nom)}${t.siBesoin ? '<span class="sb">si besoin</span>' : ""}</td>${cellules}</tr>`;
     }).join("")}
     </tbody>
   </table>`;
@@ -69,11 +57,11 @@ export const STYLE_IMPRESSION = `
 .doc-impression .table-plan th, .doc-impression .table-plan td { border: 1px solid #000; padding: 6pt 5pt; text-align: center; vertical-align: middle; }
 .doc-impression .table-plan th { font-size: 13pt; background: #eee; }
 .doc-impression .table-plan th .h { display: block; font-size: 9pt; font-weight: normal; }
-.doc-impression .table-plan td.col-nom { font-weight: bold; width: 26%; }
-.doc-impression .table-plan th.col-nom { width: 26%; }
-.doc-impression .table-plan td.dose { font-size: 15pt; font-weight: bold; width: 11%; }
+.doc-impression .table-plan td.col-nom { font-weight: bold; width: 32%; }
+.doc-impression .table-plan th.col-nom { width: 32%; }
+.doc-impression .table-plan td.dose { font-size: 15pt; font-weight: bold; width: 17%; }
 .doc-impression .table-plan td.dose .u { display: block; font-size: 8.5pt; font-weight: normal; }
-.doc-impression .table-plan td.col-rem { font-size: 10.5pt; text-align: left; }
+.doc-impression .table-plan td.col-nom .sb { display: block; font-size: 9pt; font-weight: normal; font-style: italic; }
 .doc-impression .table-plan tr.si-besoin td { background: #f4f4f4; }
 .doc-impression h2 { font-size: 14pt; margin: 0 0 6pt; border-bottom: 2px solid #000; padding-bottom: 2pt; }
 .doc-impression .fiches { display: grid; grid-template-columns: 1fr 1fr; gap: 6pt; }
@@ -129,7 +117,7 @@ export function documentImpression(profil, reglages, options = {}) {
   const actifs = traitementsEnCours(profil.traitements);
   const pages = [];
 
-  // ── Recto : plan de prise ──
+  // ── Feuille 1 : plan de prise ──
   if (o.plan) {
     pages.push(`<section class="page">
       ${entete(profil, reglages, "Traitement de")}
@@ -138,7 +126,7 @@ export function documentImpression(profil, reglages, options = {}) {
     </section>`);
   }
 
-  // ── Verso : fiches explicatives + précautions ──
+  // ── Feuille 2 (séparée) : fiches explicatives + précautions ──
   if (o.fiches || o.precautions) {
     const avecFiche = actifs.filter((t) => ficheDe(t));
     const sansFiche = actifs.filter((t) => !ficheDe(t));
@@ -146,7 +134,7 @@ export function documentImpression(profil, reglages, options = {}) {
       ? analyserInteractions(actifs.map((t) => ({ nom: t.nom, med: t.medId ? trouverParId(t.medId) : null }))).filter((i) => NIVEAUX[i.niveau].rang >= 2)
       : [];
     pages.push(`<section class="page">
-      ${o.plan ? "" : entete(profil, reglages, "Traitement de")}
+      ${entete(profil, reglages, "Médicaments de")}
       ${o.fiches ? `
         <h2>Mes médicaments expliqués</h2>
         <div class="fiches${avecFiche.length > 8 ? " trois" : ""}">

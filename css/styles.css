@@ -251,5 +251,5 @@ table.table-plan.ecran { width: 100%; border-collapse: collapse; font-size: .9re
 .table-plan.ecran td.col-nom { text-align: left; font-weight: 700; }
 .table-plan.ecran td.dose { font-weight: 800; font-size: 1.05rem; color: var(--primaire); }
 .table-plan.ecran td.dose .u { display: block; font-size: .7rem; font-weight: 400; color: var(--doux); }
-.table-plan.ecran td.col-rem { text-align: left; font-size: .8rem; color: var(--doux); }
+.table-plan.ecran td.col-nom .sb { display: block; font-weight: 400; font-style: italic; color: var(--doux); font-size: .75rem; }
 .table-plan.ecran tr.si-besoin td { background: var(--fond); }
