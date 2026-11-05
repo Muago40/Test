@@ -16,7 +16,7 @@
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --fond: #0c1514; --carte: #142120; --texte: #e6efed; --doux: #9fb1ae; --bord: #24403d;
     --primaire: #2bb3a6; --primaire-texte: #04201d; --primaire-doux: #12302d;
     --danger: #ff8a80; --danger-doux: #3a1714; --warning: #ffb36b; --warning-doux: #3a2410;
@@ -25,6 +25,14 @@
     color-scheme: dark;
   }
 }
+:root[data-theme="dark"] {
+    --fond: #0c1514; --carte: #142120; --texte: #e6efed; --doux: #9fb1ae; --bord: #24403d;
+    --primaire: #2bb3a6; --primaire-texte: #04201d; --primaire-doux: #12302d;
+    --danger: #ff8a80; --danger-doux: #3a1714; --warning: #ffb36b; --warning-doux: #3a2410;
+    --caution: #f0d062; --caution-doux: #332a08; --info: #8ab4ff; --info-doux: #13254a;
+    --ok: #6fdba5; --ok-doux: #0f2f20;
+    color-scheme: dark;
+  }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -170,7 +178,7 @@ nav button.actif { color: var(--primaire); font-weight: 700; }
 nav button.actif span { filter: none; }
 .badge {
   position: absolute; top: 4px; left: 55%; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px;
-  background: var(--danger); color: #fff; font-size: .68rem; line-height: 18px;
+  background: var(--danger); color: var(--carte); font-size: .68rem; line-height: 18px;
 }
 
 dialog {
@@ -203,3 +211,6 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   .carte { border: 1px solid #ccc; break-inside: avoid; }
   main { max-width: none; }
 }
+
+dialog.confirmation { width: min(420px, calc(100% - 24px)); }
+dialog.confirmation p { margin: 0 0 .5rem; }

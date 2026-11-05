@@ -3,6 +3,8 @@
 //  - Mode IA (optionnel) : Claude (vision) avec la clé API de l'utilisateur, bien plus fiable,
 //    y compris sur les ordonnances manuscrites.
 
+import { capacite, iaIntegreeImages } from "./plateforme.js";
+
 const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
 const ANTHROPIC_SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.3.0/+esm";
 export const MODELE_CLAUDE = "claude-opus-5-5";
@@ -23,7 +25,8 @@ export async function preparerImage(fichier, maxCote = 1800) {
     c.height = Math.round(img.height * ratio);
     c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
     const dataUrl = c.toDataURL("image/jpeg", 0.88);
-    return { dataUrl, base64: dataUrl.split(",")[1], canvas: c };
+    const blob = await new Promise((ok) => c.toBlob(ok, "image/jpeg", 0.88));
+    return { dataUrl, base64: dataUrl.split(",")[1], canvas: c, blob };
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -67,7 +70,7 @@ async function client(cle) {
   return c;
 }
 
-async function appelJSON(cle, contenu, schema, systeme) {
+async function appelAPI(cle, contenu, schema, systeme) {
   const c = await client(cle);
   const reponse = await c.beta.messages.create({
     model: MODELE_CLAUDE,
@@ -82,6 +85,45 @@ async function appelJSON(cle, contenu, schema, systeme) {
   if (reponse.stop_reason === "max_tokens") throw new Error("Réponse tronquée, réessayez.");
   const texte = reponse.content.filter((b) => b.type === "text").map((b) => b.text).join("");
   return JSON.parse(texte);
+}
+
+// IA intégrée de claude.ai (aucune clé nécessaire)
+async function appelIntegre({ consigne, systeme, schema, image, niveau = "default" }) {
+  const sample = await capacite("sample");
+  const prompt = `${systeme}\n\n${consigne}\n\nRéponds uniquement avec un objet JSON conforme à ce schéma JSON (tous les champs requis) :\n${JSON.stringify(schema)}`;
+  try {
+    return await sample.json(prompt, { modelTier: niveau, ...(image ? { images: [image] } : {}), cache: false });
+  } catch (e) {
+    const messages = {
+      not_granted: "Autorisez l'accès à Claude pour cette page (menu Permissions de la page).",
+      rate_limited: "Trop de demandes rapprochées : patientez une minute puis réessayez.",
+      invalid_json: "La réponse de l'IA n'a pas pu être lue. Réessayez avec une photo plus nette.",
+      image_rejected: "Image refusée : utilisez une photo JPEG ou PNG.",
+    };
+    throw new Error(messages[e?.code] || e?.message || "Erreur de l'IA");
+  }
+}
+
+/** Quel moteur d'IA est disponible ? "integree" (claude.ai), "cle" (clé API) ou null. */
+export async function moteurIA(cle) {
+  if (await capacite("sample")) return "integree";
+  if (cle) return "cle";
+  return null;
+}
+
+async function demander({ cle, consigne, systeme, schema, image, imageBase64, niveau }) {
+  const moteur = await moteurIA(cle);
+  if (moteur === "integree") {
+    if (image && !(await iaIntegreeImages())) throw new Error("La lecture d'images n'est pas disponible dans cette vue.");
+    return appelIntegre({ consigne, systeme, schema, image, niveau });
+  }
+  if (moteur === "cle") {
+    const contenu = [];
+    if (imageBase64) contenu.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: imageBase64 } });
+    contenu.push({ type: "text", text: consigne });
+    return appelAPI(cle, contenu, schema, systeme);
+  }
+  throw new Error("Aucune IA configurée.");
 }
 
 const SCHEMA_ORDONNANCE = {
@@ -116,12 +158,15 @@ const SCHEMA_ORDONNANCE = {
   },
 };
 
-export async function lireOrdonnanceIA(cle, base64) {
-  return appelJSON(cle, [
-    { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
-    { type: "text", text: "Voici la photo d'une ordonnance médicale française. Extrais chaque médicament prescrit avec sa posologie. Si un élément est illisible ou incertain, indique-le dans 'remarques' plutôt que de deviner. N'invente aucun médicament." },
-  ], SCHEMA_ORDONNANCE,
-  "Tu es un assistant de lecture d'ordonnances pour une application d'aide à l'observance. Tu transcris fidèlement ; tu ne poses pas de diagnostic.");
+export async function lireOrdonnanceIA(cle, photo) {
+  const r = await demander({
+    cle, image: photo.blob, imageBase64: photo.base64, niveau: "complex",
+    systeme: "Tu es un assistant de lecture d'ordonnances pour une application d'aide à l'observance. Tu transcris fidèlement ; tu ne poses pas de diagnostic.",
+    consigne: "Voici la photo d'une ordonnance médicale française. Extrais chaque médicament prescrit avec sa posologie. Si un élément est illisible ou incertain, indique-le dans 'remarques' plutôt que de deviner. N'invente aucun médicament. Si l'image n'est pas une ordonnance, renvoie une liste vide.",
+    schema: SCHEMA_ORDONNANCE,
+  });
+  if (!Array.isArray(r?.medicaments)) throw new Error("Réponse inattendue de l'IA.");
+  return r;
 }
 
 const SCHEMA_FICHE = {
@@ -139,8 +184,11 @@ const SCHEMA_FICHE = {
 };
 
 export async function genererFicheIA(cle, nom) {
-  return appelJSON(cle, [{ type: "text", text: `Rédige une fiche patient synthétique, en français simple, pour le médicament « ${nom} » (tel que commercialisé en France) : famille thérapeutique, principales indications, 3 à 6 effets indésirables principaux, conseils de prise pratiques. Si le médicament t'est inconnu, indique-le dans 'famille' et laisse les listes vides.` }],
-  SCHEMA_FICHE, "Tu es pharmacien et tu rédiges des fiches d'information patient fiables et concises.");
+  const f = await demander({ cle, schema: SCHEMA_FICHE,
+    systeme: "Tu es pharmacien et tu rédiges des fiches d'information patient fiables et concises.",
+    consigne: `Rédige une fiche patient synthétique, en français simple, pour le médicament « ${nom} » (tel que commercialisé en France) : famille thérapeutique, principales indications, 3 à 6 effets indésirables principaux, conseils de prise pratiques. Si le médicament t'est inconnu, indique-le dans 'famille' et laisse les listes vides.` });
+  for (const k of ["indications", "effets", "conseils"]) if (!Array.isArray(f[k])) f[k] = [];
+  return f;
 }
 
 const SCHEMA_INTERACTIONS = {
@@ -165,6 +213,8 @@ const SCHEMA_INTERACTIONS = {
 };
 
 export async function analyserInteractionsIA(cle, noms) {
-  return appelJSON(cle, [{ type: "text", text: `Liste de traitements d'un patient : ${noms.join(" ; ")}.\nIdentifie les interactions médicamenteuses cliniquement pertinentes selon le Thésaurus ANSM (niveaux CI, AD, PE, APEC) et les doublons thérapeutiques. Ne liste que des interactions réelles et documentées.` }],
-  SCHEMA_INTERACTIONS, "Tu es pharmacien clinicien. Tu es précis et tu n'inventes pas d'interactions.");
+  const r = await demander({ cle, schema: SCHEMA_INTERACTIONS,
+    systeme: "Tu es pharmacien clinicien. Tu es précis et tu n'inventes pas d'interactions.",
+    consigne: `Liste de traitements d'un patient : ${noms.join(" ; ")}.\nIdentifie les interactions médicamenteuses cliniquement pertinentes selon le Thésaurus ANSM (niveaux CI, AD, PE, APEC) et les doublons thérapeutiques. Ne liste que des interactions réelles et documentées.` });
+  return (r?.interactions || []).filter((i) => ["CI", "AD", "PE", "APEC"].includes(i.niveau));
 }

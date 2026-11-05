@@ -1,1 +1,1 @@
-{"type":"module","private":true,"scripts":{"test":"node tests/parser.test.mjs","start":"python3 -m http.server 8080"}}
+{"type":"module","private":true,"scripts":{"test":"node tests/parser.test.mjs","start":"python3 -m http.server 8080","build:claude":"node outils/build-claude.mjs"}}

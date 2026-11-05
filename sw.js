@@ -1,8 +1,9 @@
 // Service worker : fonctionnement hors ligne + gestion du clic sur les notifications.
-const CACHE = "medoc-planner-v1";
+const CACHE = "medoc-planner-v2";
 const FICHIERS = [
   "./", "index.html", "css/styles.css", "manifest.webmanifest", "icons/icon.svg",
   "js/app.js", "js/store.js", "js/parser.js", "js/planning.js", "js/alarmes.js", "js/ocr.js",
+  "js/plateforme.js", "js/ui.js",
   "js/data/medicaments.js", "js/data/interactions.js",
 ];
 

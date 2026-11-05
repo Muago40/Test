@@ -163,3 +163,13 @@ export function telechargerICS() {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
+
+/** Horaires distincts des prises du jour, avec les médicaments concernés (pour régler des alarmes). */
+export function horairesAlarmes() {
+  const parHeure = new Map();
+  for (const p of prisesDuJour(aujourdhui(), etat.traitements, etat.reglages)) {
+    if (!parHeure.has(p.heure)) parHeure.set(p.heure, []);
+    parHeure.get(p.heure).push(p.t.nom);
+  }
+  return [...parHeure].map(([heure, noms]) => ({ heure, noms }));
+}

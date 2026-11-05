@@ -1,0 +1,3321 @@
+<title>MédocPlanner</title>
+<style>
+:root {
+  --fond: #f1f5f4;
+  --carte: #ffffff;
+  --texte: #10201e;
+  --doux: #5b6b69;
+  --bord: #dbe4e2;
+  --primaire: #0f766e;
+  --primaire-texte: #ffffff;
+  --primaire-doux: #e0f2ef;
+  --danger: #b42318; --danger-doux: #fde8e6;
+  --warning: #b54708; --warning-doux: #fef0e1;
+  --caution: #8a6d00; --caution-doux: #fdf6d8;
+  --info: #175cd3; --info-doux: #e5efff;
+  --ok: #067647; --ok-doux: #e3f6ec;
+  --rayon: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fond: #0c1514; --carte: #142120; --texte: #e6efed; --doux: #9fb1ae; --bord: #24403d;
+    --primaire: #2bb3a6; --primaire-texte: #04201d; --primaire-doux: #12302d;
+    --danger: #ff8a80; --danger-doux: #3a1714; --warning: #ffb36b; --warning-doux: #3a2410;
+    --caution: #f0d062; --caution-doux: #332a08; --info: #8ab4ff; --info-doux: #13254a;
+    --ok: #6fdba5; --ok-doux: #0f2f20;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+    --fond: #0c1514; --carte: #142120; --texte: #e6efed; --doux: #9fb1ae; --bord: #24403d;
+    --primaire: #2bb3a6; --primaire-texte: #04201d; --primaire-doux: #12302d;
+    --danger: #ff8a80; --danger-doux: #3a1714; --warning: #ffb36b; --warning-doux: #3a2410;
+    --caution: #f0d062; --caution-doux: #332a08; --info: #8ab4ff; --info-doux: #13254a;
+    --ok: #6fdba5; --ok-doux: #0f2f20;
+    color-scheme: dark;
+  }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--fond); color: var(--texte);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+h1, h2, h3, h4 { margin: 0 0 .5rem; line-height: 1.2; }
+h2 { font-size: 1.15rem; } h3 { font-size: 1.05rem; } h4 { font-size: .95rem; margin-top: .5rem; }
+ul { margin: .25rem 0; padding-left: 1.2rem; }
+pre { white-space: pre-wrap; font-size: .85rem; background: var(--fond); padding: .5rem; border-radius: 8px; }
+
+.entete {
+  display: flex; align-items: center; gap: .5rem; padding: .8rem 16px;
+  padding-top: calc(.8rem + env(safe-area-inset-top));
+  background: var(--primaire); color: var(--primaire-texte);
+}
+.entete h1 { font-size: 1.2rem; margin: 0; }
+.logo { font-size: 1.4rem; }
+
+main { max-width: 720px; margin: 0 auto; padding: 12px 16px; }
+
+.carte {
+  background: var(--carte); border: 1px solid var(--bord); border-radius: var(--rayon);
+  padding: 16px; margin-bottom: 12px;
+}
+.carte.surligne { border-color: var(--primaire); box-shadow: 0 0 0 2px var(--primaire-doux); }
+.carte.vide { text-align: center; color: var(--doux); }
+details.carte summary { cursor: pointer; font-weight: 600; }
+details.carte[open] summary { margin-bottom: .75rem; }
+
+.aide { color: var(--doux); font-size: .9rem; margin: .4rem 0; }
+.sous { color: var(--doux); font-size: .88rem; display: block; }
+.sous.ok { color: var(--ok); }
+.centre { text-align: center; }
+.source { font-size: .82rem; color: var(--doux); font-style: italic; margin-top: .2rem; }
+
+.bouton {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  min-height: 44px; padding: .55rem 1rem; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--bord); background: var(--carte); color: var(--texte);
+  font: inherit; font-weight: 600; text-align: center;
+}
+.bouton:hover { border-color: var(--primaire); }
+.bouton.principal { background: var(--primaire); color: var(--primaire-texte); border-color: var(--primaire); }
+.bouton.danger { color: var(--danger); border-color: var(--danger); }
+.bouton[disabled] { opacity: .5; cursor: not-allowed; }
+.bouton.large { width: 100%; }
+.bouton.rond { width: 44px; padding: 0; border-radius: 50%; font-size: 1.4rem; }
+.ligne-boutons { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+.ligne-boutons > * { flex: 1 1 auto; }
+.ligne-boutons.petit .bouton { min-height: 36px; padding: .3rem .8rem; font-size: .88rem; flex: 0 0 auto; }
+
+input, select, textarea {
+  width: 100%; font: inherit; color: var(--texte); background: var(--carte);
+  border: 1px solid var(--bord); border-radius: 10px; padding: .6rem .7rem; margin-top: .25rem;
+}
+input[type="checkbox"] { width: 22px; height: 22px; margin: 0; accent-color: var(--primaire); flex: none; }
+label { display: block; margin: .6rem 0; font-size: .92rem; }
+label.case, label.interrupteur { display: flex; align-items: center; gap: .6rem; }
+fieldset { border: 1px solid var(--bord); border-radius: 10px; margin: .6rem 0; padding: .5rem .8rem; }
+legend { font-weight: 600; font-size: .9rem; padding: 0 .3rem; }
+textarea { resize: vertical; margin-bottom: .6rem; }
+.deux-col { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.grille-heures { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 .8rem; }
+
+.apercu { width: 100%; max-height: 320px; object-fit: contain; border-radius: 10px; margin-top: .75rem; background: var(--fond); }
+
+.liste { list-style: none; padding: 0; margin: 0; }
+.liste > li { padding: .75rem 0; border-top: 1px solid var(--bord); }
+.liste > li:first-child { border-top: 0; padding-top: .25rem; }
+.liste > li.termine { opacity: .55; }
+.ligne-titre { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+
+.pastille {
+  display: inline-block; font-size: .75rem; font-weight: 700; padding: .15rem .55rem; border-radius: 999px;
+  background: var(--fond); color: var(--doux);
+}
+.pastille.danger { background: var(--danger-doux); color: var(--danger); }
+.pastille.warning { background: var(--warning-doux); color: var(--warning); }
+.pastille.caution { background: var(--caution-doux); color: var(--caution); }
+.pastille.info { background: var(--info-doux); color: var(--info); }
+.legende { display: flex; flex-wrap: wrap; gap: .35rem; }
+
+.alerte { padding: .75rem; border-radius: 10px; font-size: .92rem; }
+.alerte.danger { background: var(--danger-doux); color: var(--danger); }
+.alerte.warning { background: var(--warning-doux); color: var(--warning); }
+.alerte.info { background: var(--info-doux); color: var(--info); }
+.alerte.ok { background: var(--ok-doux); color: var(--ok); }
+
+.interaction { border-left: 4px solid var(--bord); padding-left: .75rem !important; margin: .25rem 0; }
+.interaction.danger { border-left-color: var(--danger); }
+.interaction.warning { border-left-color: var(--warning); }
+.interaction.caution { border-left-color: var(--caution); }
+.interaction.info { border-left-color: var(--info); }
+.interaction p { margin: .35rem 0; font-size: .92rem; }
+.conduite { font-weight: 600; }
+
+.chargement { padding: .75rem; color: var(--primaire); font-weight: 600; }
+.chargement::before {
+  content: ""; display: inline-block; width: 14px; height: 14px; margin-right: .5rem; vertical-align: -2px;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: tourne .8s linear infinite;
+}
+@keyframes tourne { to { transform: rotate(360deg); } }
+
+/* Planning */
+.nav-date { display: flex; align-items: center; justify-content: space-between; text-align: center; }
+.jour { font-size: 1.2rem; font-weight: 700; text-transform: capitalize; }
+.progression-jour { height: 8px; background: var(--fond); border-radius: 99px; overflow: hidden; margin-top: .9rem; }
+.progression-jour > div { height: 100%; background: var(--ok); transition: width .3s; }
+.creneau-tete { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .4rem; }
+.heure { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--primaire); }
+.creneau.fait { opacity: .7; }
+.creneau.fait .heure { color: var(--ok); }
+.creneau.retard { border-color: var(--warning); }
+.creneau.retard .heure { color: var(--warning); }
+.prise label { display: flex; gap: .75rem; align-items: flex-start; margin: 0; cursor: pointer; }
+.prise input { margin-top: 2px; }
+.prise-ok strong { text-decoration: line-through; text-decoration-color: var(--doux); }
+
+/* Fiches */
+.fiche .famille { color: var(--primaire); font-weight: 600; font-size: .92rem; }
+.fiche .poso { background: var(--primaire-doux); padding: .5rem .7rem; border-radius: 8px; margin: .6rem 0; font-size: .92rem; }
+.fiche .moment { font-weight: 600; margin: .2rem 0; }
+.grille-fiche { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem 1rem; font-size: .92rem; }
+.grille-fiche .pleine { grid-column: 1 / -1; }
+@media (max-width: 520px) { .grille-fiche { grid-template-columns: 1fr; } }
+
+/* Navigation */
+nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  background: var(--carte); border-top: 1px solid var(--bord);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+nav button {
+  position: relative; background: none; border: 0; padding: .45rem 0 .5rem; cursor: pointer;
+  font: inherit; font-size: .7rem; color: var(--doux); display: flex; flex-direction: column; align-items: center; gap: .1rem;
+}
+nav button span { font-size: 1.3rem; filter: grayscale(.6); }
+nav button.actif { color: var(--primaire); font-weight: 700; }
+nav button.actif span { filter: none; }
+.badge {
+  position: absolute; top: 4px; left: 55%; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px;
+  background: var(--danger); color: var(--carte); font-size: .68rem; line-height: 18px;
+}
+
+dialog {
+  width: min(560px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow: auto;
+  border: 1px solid var(--bord); border-radius: var(--rayon); padding: 16px;
+  background: var(--carte); color: var(--texte);
+}
+dialog::backdrop { background: rgba(0, 0, 0, .45); }
+
+.bandeau {
+  background: var(--caution-doux); color: var(--texte); border-bottom: 1px solid var(--bord);
+  padding: .75rem 16px; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; font-size: .9rem;
+}
+.bandeau p { margin: 0; flex: 1 1 260px; }
+
+#toast {
+  position: fixed; left: 16px; right: 16px; bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 20;
+  max-width: 560px; margin: 0 auto; background: var(--texte); color: var(--fond);
+  padding: .9rem 1rem; border-radius: 12px; white-space: pre-line;
+  transform: translateY(150%); opacity: 0; transition: .3s; pointer-events: none;
+}
+#toast.visible { transform: none; opacity: 1; }
+#toast::first-line { font-weight: 700; }
+
+.print-only { display: none; }
+@media print {
+  body { background: #fff; color: #000; padding: 0; }
+  .entete, nav, .no-print, .bandeau, #toast { display: none !important; }
+  .print-only { display: block; }
+  .carte { border: 1px solid #ccc; break-inside: avoid; }
+  main { max-width: none; }
+}
+
+dialog.confirmation { width: min(420px, calc(100% - 24px)); }
+dialog.confirmation p { margin: 0 0 .5rem; }
+
+</style>
+<header class="entete">
+    <span class="logo" aria-hidden="true">💊</span>
+    <h1>MédocPlanner</h1>
+  </header>
+
+  <main id="contenu" aria-live="polite"></main>
+
+  <nav aria-label="Navigation principale">
+    <button data-vue="ordonnance"><span>📷</span>Ordonnance</button>
+    <button data-vue="planning"><span>🗓️</span>Planning</button>
+    <button data-vue="fiches"><span>📘</span>Fiches</button>
+    <button data-vue="interactions"><span>⚖️</span>Interactions<b id="badge-interactions" class="badge" hidden></b></button>
+    <button data-vue="reglages"><span>⏰</span>Alarmes</button>
+  </nav>
+
+  <dialog id="dialogue"></dialog>
+  <dialog id="confirmation" class="confirmation"></dialog>
+  <div id="toast" role="alert"></div>
+<script type="module">
+// ── js/plateforme.js ──
+// Détection de l'environnement d'exécution.
+//  - "web"      : site classique (localhost, GitHub Pages…) : service worker, notifications,
+//                 OCR local Tesseract, clé API Anthropic optionnelle.
+//  - "claude"   : page publiée sur claude.ai : IA intégrée (capacité `sample`, sans clé API),
+//                 sauvegarde sur le compte (`db`), export de fichiers (`downloads`).
+
+const capacites = {};
+
+const estClaude = typeof window !== "undefined" && typeof window.claude?.use === "function";
+
+async function capacite(nom) {
+  if (!estClaude) return null;
+  if (!(nom in capacites)) {
+    capacites[nom] = window.claude.use(nom).catch(() => null);
+  }
+  return capacites[nom];
+}
+
+/** L'IA intégrée de claude.ai peut-elle lire des images ? */
+async function iaIntegreeImages() {
+  const s = await capacite("sample");
+  if (!s) return false;
+  try { return !!(await s.limits())?.images; } catch { return false; }
+}
+
+// ── js/ui.js ──
+// Messages et confirmations dans la page (alert/confirm ne sont pas disponibles partout,
+// notamment dans les pages publiées sur claude.ai).
+
+let minuteur = null;
+
+function informer(message, duree = 5000) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.add("visible");
+  clearTimeout(minuteur);
+  minuteur = setTimeout(() => el.classList.remove("visible"), duree);
+}
+
+function confirmer(message, libelleOk = "Confirmer") {
+  return new Promise((resoudre) => {
+    const dlg = document.getElementById("confirmation");
+    dlg.replaceChildren();
+    const p = document.createElement("p");
+    p.textContent = message;
+    const ligne = document.createElement("div");
+    ligne.className = "ligne-boutons";
+    const non = Object.assign(document.createElement("button"), { className: "bouton", textContent: "Annuler", type: "button" });
+    const oui = Object.assign(document.createElement("button"), { className: "bouton principal", textContent: libelleOk, type: "button" });
+    ligne.append(non, oui);
+    dlg.append(p, ligne);
+    const fin = (v) => { dlg.close(); resoudre(v); };
+    non.onclick = () => fin(false);
+    oui.onclick = () => fin(true);
+    dlg.oncancel = () => resoudre(false);
+    dlg.showModal();
+  });
+}
+
+// ── js/data/medicaments.js ──
+// Base locale de médicaments courants (France).
+// Informations synthétiques à visée pédagogique, issues des RCP / notices usuelles.
+// Elles ne remplacent ni la notice, ni l'avis du médecin ou du pharmacien.
+//
+// Champs :
+//  id          identifiant interne
+//  dci         dénomination commune internationale
+//  noms        noms commerciaux / variantes reconnues sur une ordonnance
+//  famille     famille thérapeutique
+//  classes     étiquettes utilisées par le moteur d'interactions
+//  indications principales indications
+//  effets      effets indésirables principaux
+//  conseils    conseils de prise
+//  moment      moment de prise conseillé par rapport aux repas (affiché dans le planning)
+
+const MEDICAMENTS = [
+  // ───────────── Antalgiques / anti-inflammatoires ─────────────
+  {
+    id: "paracetamol", dci: "Paracétamol",
+    noms: ["doliprane", "dafalgan", "efferalgan", "paracetamol", "dolko", "geluprane"],
+    famille: "Antalgique et antipyrétique (palier 1)",
+    classes: ["paracetamol"],
+    indications: ["Douleurs légères à modérées", "Fièvre"],
+    effets: ["Rares aux doses usuelles", "Toxicité hépatique grave en cas de surdosage", "Réactions cutanées (rares)"],
+    conseils: ["Respecter au moins 4 h entre deux prises", "Ne pas dépasser 3 g/jour (4 g sur avis médical) chez l'adulte", "Attention aux autres médicaments contenant du paracétamol (risque de surdosage)", "Éviter l'alcool"],
+    moment: "Pendant ou en dehors des repas",
+  },
+  {
+    id: "paracetamol_codeine", dci: "Paracétamol + codéine",
+    noms: ["codoliprane", "dafalgan codeine", "klipal", "prontalgine", "paracetamol codeine"],
+    famille: "Antalgique opioïde faible (palier 2)",
+    classes: ["paracetamol", "opioide", "sedatif"],
+    indications: ["Douleurs modérées à intenses ne répondant pas au paracétamol seul"],
+    effets: ["Constipation", "Nausées, vomissements", "Somnolence, vertiges", "Dépendance en cas d'usage prolongé"],
+    conseils: ["Contient du paracétamol : ne pas associer à un autre médicament en contenant", "Prudence en cas de conduite automobile", "Éviter l'alcool", "Traitement de courte durée"],
+    moment: "Pendant ou en dehors des repas",
+  },
+  {
+    id: "tramadol", dci: "Tramadol",
+    noms: ["tramadol", "topalgic", "contramal", "monoalgic", "ixprim", "zaldiar", "monocrixo"],
+    famille: "Antalgique opioïde faible (palier 2)",
+    classes: ["opioide", "tramadol", "sedatif", "serotoninergique"],
+    indications: ["Douleurs modérées à intenses"],
+    effets: ["Nausées, vomissements", "Vertiges, somnolence", "Constipation", "Sueurs", "Risque de convulsions et de dépendance"],
+    conseils: ["Éviter l'alcool", "Prudence en cas de conduite", "Ne pas arrêter brutalement après un traitement prolongé", "Ixprim/Zaldiar contiennent aussi du paracétamol"],
+    moment: "Pendant ou en dehors des repas",
+  },
+  {
+    id: "ibuprofene", dci: "Ibuprofène",
+    noms: ["ibuprofene", "advil", "nurofen", "spedifen", "antarene", "brufen", "upfen", "nureflex"],
+    famille: "Anti-inflammatoire non stéroïdien (AINS)",
+    classes: ["ains"],
+    indications: ["Douleurs", "Fièvre", "Inflammation (rhumatologie, traumatologie)", "Règles douloureuses"],
+    effets: ["Troubles digestifs (douleurs, nausées)", "Ulcère et saignement digestif", "Insuffisance rénale", "Hypertension, rétention d'eau", "Réactions allergiques"],
+    conseils: ["À prendre au cours d'un repas", "Durée la plus courte possible", "Contre-indiqué à partir du 6e mois de grossesse", "Bien s'hydrater"],
+    moment: "Au cours d'un repas",
+  },
+  {
+    id: "ketoprofene", dci: "Kétoprofène",
+    noms: ["ketoprofene", "profenid", "bi-profenid", "biprofenid", "ketum"],
+    famille: "Anti-inflammatoire non stéroïdien (AINS)",
+    classes: ["ains"],
+    indications: ["Douleurs et inflammations rhumatismales", "Douleurs post-traumatiques"],
+    effets: ["Troubles digestifs, ulcère", "Insuffisance rénale", "Photosensibilisation (gel)", "Réactions allergiques"],
+    conseils: ["À prendre au cours d'un repas", "Gel : éviter toute exposition solaire pendant le traitement et 2 semaines après", "Contre-indiqué à partir du 6e mois de grossesse"],
+    moment: "Au cours d'un repas",
+  },
+  {
+    id: "diclofenac", dci: "Diclofénac",
+    noms: ["diclofenac", "voltarene", "voltaren", "flector", "xenid"],
+    famille: "Anti-inflammatoire non stéroïdien (AINS)",
+    classes: ["ains"],
+    indications: ["Rhumatismes inflammatoires", "Douleurs aiguës, tendinites, lombalgies"],
+    effets: ["Troubles digestifs, ulcère", "Risque cardiovasculaire", "Atteinte hépatique et rénale"],
+    conseils: ["À prendre au cours d'un repas", "Durée la plus courte possible"],
+    moment: "Au cours d'un repas",
+  },
+  {
+    id: "naproxene", dci: "Naproxène",
+    noms: ["naproxene", "apranax", "naprosyne", "antalnox", "alleve"],
+    famille: "Anti-inflammatoire non stéroïdien (AINS)",
+    classes: ["ains"],
+    indications: ["Douleurs", "Rhumatismes inflammatoires", "Règles douloureuses"],
+    effets: ["Troubles digestifs, ulcère", "Insuffisance rénale", "Rétention d'eau"],
+    conseils: ["À prendre au cours d'un repas", "Contre-indiqué à partir du 6e mois de grossesse"],
+    moment: "Au cours d'un repas",
+  },
+  {
+    id: "aspirine_antiagregant", dci: "Acide acétylsalicylique (faible dose)",
+    noms: ["kardegic", "aspirine protect", "resitune", "duoplavin", "aspegic 100", "aspirine 75", "aspirine 100"],
+    famille: "Antiagrégant plaquettaire",
+    classes: ["aspirine", "antiagregant"],
+    indications: ["Prévention des accidents cardiovasculaires (infarctus, AVC) après un premier événement", "Après pose de stent"],
+    effets: ["Saignements (nez, gencives, digestifs)", "Ecchymoses", "Douleurs d'estomac"],
+    conseils: ["Prendre au cours d'un repas", "Ne pas arrêter sans avis médical", "Signaler le traitement avant tout soin dentaire ou chirurgie"],
+    moment: "Au cours d'un repas",
+  },
+  {
+    id: "aspirine", dci: "Acide acétylsalicylique (dose antalgique)",
+    noms: ["aspirine", "aspegic", "aspro", "aspirine du rhone", "aspirine upsa"],
+    famille: "Antalgique, antipyrétique, anti-inflammatoire",
+    classes: ["aspirine", "ains"],
+    indications: ["Douleurs", "Fièvre"],
+    effets: ["Saignements", "Troubles digestifs, ulcère", "Bourdonnements d'oreille en cas de surdosage"],
+    conseils: ["Prendre au cours d'un repas", "Éviter chez l'enfant en cas d'infection virale", "Contre-indiqué à partir du 6e mois de grossesse"],
+    moment: "Au cours d'un repas",
+  },
+  {
+    id: "prednisolone", dci: "Prednisolone",
+    noms: ["solupred", "prednisolone"],
+    famille: "Corticoïde (glucocorticoïde)",
+    classes: ["corticoide"],
+    indications: ["Maladies inflammatoires et allergiques", "Asthme, poussées de BPCO", "Maladies auto-immunes"],
+    effets: ["Excitation, troubles du sommeil", "Augmentation de l'appétit, prise de poids", "Hausse de la glycémie et de la tension", "Fragilité osseuse et infections (traitement prolongé)"],
+    conseils: ["Prendre le matin en une prise, au cours du petit-déjeuner", "Ne pas arrêter brutalement un traitement de plus de 10 jours", "Limiter le sel et le sucre en traitement prolongé"],
+    moment: "Le matin, au cours du repas",
+  },
+  {
+    id: "prednisone", dci: "Prednisone",
+    noms: ["cortancyl", "prednisone"],
+    famille: "Corticoïde (glucocorticoïde)",
+    classes: ["corticoide"],
+    indications: ["Maladies inflammatoires et allergiques", "Maladies auto-immunes"],
+    effets: ["Troubles du sommeil", "Prise de poids", "Hausse de la glycémie et de la tension", "Ostéoporose (long cours)"],
+    conseils: ["Prendre le matin au cours du petit-déjeuner", "Ne jamais arrêter brutalement un traitement prolongé"],
+    moment: "Le matin, au cours du repas",
+  },
+
+  // ───────────── Anti-infectieux ─────────────
+  {
+    id: "amoxicilline", dci: "Amoxicilline",
+    noms: ["amoxicilline", "clamoxyl", "amoxil", "hiconcil"],
+    famille: "Antibiotique – pénicilline (bêta-lactamine)",
+    classes: ["antibiotique", "penicilline"],
+    indications: ["Angines, otites, sinusites bactériennes", "Infections respiratoires", "Éradication d'Helicobacter pylori"],
+    effets: ["Diarrhée", "Nausées", "Éruption cutanée", "Allergie (rare mais potentiellement grave)", "Mycose"],
+    conseils: ["Respecter les horaires et aller au bout du traitement même si amélioration", "Arrêter et consulter en cas d'éruption ou de gonflement du visage", "Pendant ou en dehors des repas"],
+    moment: "Pendant ou en dehors des repas, à intervalles réguliers",
+  },
+  {
+    id: "amoxicilline_clav", dci: "Amoxicilline + acide clavulanique",
+    noms: ["augmentin", "amoxicilline acide clavulanique", "amoxicilline/acide clavulanique", "ciblor"],
+    famille: "Antibiotique – pénicilline + inhibiteur de bêta-lactamase",
+    classes: ["antibiotique", "penicilline"],
+    indications: ["Sinusites, otites, infections respiratoires", "Infections cutanées et dentaires"],
+    effets: ["Diarrhée (fréquente)", "Nausées", "Mycoses", "Allergie", "Atteinte hépatique (rare)"],
+    conseils: ["À prendre en début de repas pour une meilleure tolérance digestive", "Aller au bout du traitement"],
+    moment: "En début de repas",
+  },
+  {
+    id: "azithromycine", dci: "Azithromycine",
+    noms: ["azithromycine", "zithromax", "orofar azithro", "azadose"],
+    famille: "Antibiotique – macrolide",
+    classes: ["antibiotique", "macrolide", "qt"],
+    indications: ["Angines, infections respiratoires", "Infections sexuellement transmissibles"],
+    effets: ["Diarrhée, douleurs abdominales", "Nausées", "Troubles du rythme cardiaque (rare)"],
+    conseils: ["Traitement court (souvent 3 à 5 jours) mais action prolongée", "Prendre à heure fixe"],
+    moment: "Pendant ou en dehors des repas",
+  },
+  {
+    id: "clarithromycine", dci: "Clarithromycine",
+    noms: ["clarithromycine", "zeclar", "naxy"],
+    famille: "Antibiotique – macrolide",
+    classes: ["antibiotique", "macrolide", "qt", "inhibiteur_cyp3a4"],
+    indications: ["Infections respiratoires et ORL", "Éradication d'Helicobacter pylori"],
+    effets: ["Troubles digestifs", "Goût métallique", "Troubles du rythme cardiaque (rare)"],
+    conseils: ["Nombreuses interactions : signaler tous vos traitements", "Prendre à intervalles réguliers"],
+    moment: "Pendant ou en dehors des repas",
+  },
+  {
+    id: "ciprofloxacine", dci: "Ciprofloxacine",
+    noms: ["ciprofloxacine", "ciflox", "uniflox"],
+    famille: "Antibiotique – fluoroquinolone",
+    classes: ["antibiotique", "fluoroquinolone", "qt"],
+    indications: ["Infections urinaires compliquées", "Infections digestives et osseuses"],
+    effets: ["Troubles digestifs", "Tendinites et rupture de tendon", "Photosensibilisation", "Confusion, troubles neurologiques"],
+    conseils: ["Espacer de 2 h minimum avec fer, calcium, magnésium, zinc, antiacides et laitages", "Éviter le soleil", "Arrêter et consulter en cas de douleur tendineuse"],
+    moment: "Pendant ou en dehors des repas, à distance des laitages",
+  },
+  {
+    id: "levofloxacine", dci: "Lévofloxacine",
+    noms: ["levofloxacine", "tavanic"],
+    famille: "Antibiotique – fluoroquinolone",
+    classes: ["antibiotique", "fluoroquinolone", "qt"],
+    indications: ["Pneumonies", "Infections urinaires et prostatiques"],
+    effets: ["Troubles digestifs", "Tendinopathies", "Photosensibilisation", "Allongement du QT"],
+    conseils: ["Espacer de 2 h avec fer, calcium, magnésium, antiacides", "Éviter l'exposition solaire"],
+    moment: "Pendant ou en dehors des repas",
+  },
+  {
+    id: "doxycycline", dci: "Doxycycline",
+    noms: ["doxycycline", "doxy", "vibramycine", "tolexine", "granudoxy", "doxylis"],
+    famille: "Antibiotique – cycline",
+    classes: ["antibiotique", "cycline"],
+    indications: ["Acné", "Infections respiratoires et génitales", "Prévention du paludisme", "Maladie de Lyme"],
+    effets: ["Photosensibilisation", "Brûlures de l'œsophage", "Troubles digestifs"],
+    conseils: ["Prendre au milieu d'un repas avec un grand verre d'eau, en position assise", "Ne pas se coucher dans l'heure qui suit", "Éviter le soleil", "Espacer de 2 h avec fer, calcium, antiacides"],
+    moment: "Au milieu du repas, au moins 1 h avant le coucher",
+  },
+  {
+    id: "fosfomycine", dci: "Fosfomycine trométamol",
+    noms: ["monuril", "uridoz", "fosfomycine"],
+    famille: "Antibiotique urinaire",
+    classes: ["antibiotique"],
+    indications: ["Cystite aiguë simple de la femme"],
+    effets: ["Diarrhée, nausées", "Mycose vaginale"],
+    conseils: ["Prise unique, à jeun (2 à 3 h après un repas), de préférence le soir au coucher après avoir uriné", "Bien boire les jours suivants"],
+    moment: "À jeun, le soir au coucher",
+  },
+
+  // ───────────── Digestif ─────────────
+  {
+    id: "omeprazole", dci: "Oméprazole",
+    noms: ["omeprazole", "mopral", "zoltum"],
+    famille: "Inhibiteur de la pompe à protons (IPP)",
+    classes: ["ipp", "ipp_cyp2c19"],
+    indications: ["Reflux gastro-œsophagien", "Ulcère gastrique ou duodénal", "Protection gastrique sous AINS"],
+    effets: ["Maux de tête", "Diarrhée ou constipation", "Ballonnements", "Carence en magnésium/vitamine B12 (long cours)"],
+    conseils: ["Prendre le matin à jeun, 15 à 30 min avant le petit-déjeuner", "Avaler sans croquer", "Réévaluer régulièrement la nécessité du traitement"],
+    moment: "Le matin à jeun, avant le repas",
+  },
+  {
+    id: "esomeprazole", dci: "Ésoméprazole",
+    noms: ["esomeprazole", "inexium", "nexium"],
+    famille: "Inhibiteur de la pompe à protons (IPP)",
+    classes: ["ipp", "ipp_cyp2c19"],
+    indications: ["Reflux gastro-œsophagien", "Ulcère", "Prévention des lésions dues aux AINS"],
+    effets: ["Maux de tête", "Troubles digestifs", "Carences (long cours)"],
+    conseils: ["Prendre avant le repas, de préférence le matin", "Avaler sans croquer"],
+    moment: "Le matin à jeun, avant le repas",
+  },
+  {
+    id: "pantoprazole", dci: "Pantoprazole",
+    noms: ["pantoprazole", "inipomp", "eupantol"],
+    famille: "Inhibiteur de la pompe à protons (IPP)",
+    classes: ["ipp"],
+    indications: ["Reflux gastro-œsophagien", "Ulcère", "Protection gastrique"],
+    effets: ["Maux de tête", "Troubles digestifs"],
+    conseils: ["Prendre 1 h avant le repas, de préférence le matin"],
+    moment: "Le matin à jeun, avant le repas",
+  },
+  {
+    id: "lansoprazole", dci: "Lansoprazole",
+    noms: ["lansoprazole", "lanzor", "ogast", "ogastoro"],
+    famille: "Inhibiteur de la pompe à protons (IPP)",
+    classes: ["ipp"],
+    indications: ["Reflux gastro-œsophagien", "Ulcère"],
+    effets: ["Maux de tête", "Troubles digestifs"],
+    conseils: ["Prendre le matin à jeun, 30 min avant le repas"],
+    moment: "Le matin à jeun, avant le repas",
+  },
+  {
+    id: "alginate", dci: "Alginate de sodium + bicarbonate",
+    noms: ["gaviscon", "gavisconell", "topaal", "maalox", "rennie", "xolaam"],
+    famille: "Antiacide / pansement gastrique",
+    classes: ["antiacide"],
+    indications: ["Brûlures d'estomac", "Remontées acides"],
+    effets: ["Constipation ou diarrhée (rares)"],
+    conseils: ["Prendre après les repas et au coucher, ou lors des douleurs", "Espacer de 2 h avec les autres médicaments (diminue leur absorption)"],
+    moment: "Après les repas",
+  },
+  {
+    id: "metoclopramide", dci: "Métoclopramide",
+    noms: ["primperan", "metoclopramide", "prokinyl"],
+    famille: "Antiémétique (antidopaminergique)",
+    classes: ["antiemetique_dopa"],
+    indications: ["Nausées et vomissements"],
+    effets: ["Somnolence", "Mouvements anormaux (surtout chez les jeunes)", "Diarrhée"],
+    conseils: ["Prendre avant les repas", "Traitement de 5 jours maximum", "Respecter au moins 6 h entre deux prises"],
+    moment: "Avant les repas",
+  },
+  {
+    id: "domperidone", dci: "Dompéridone",
+    noms: ["motilium", "domperidone", "peridys", "oroperidys"],
+    famille: "Antiémétique (antidopaminergique)",
+    classes: ["antiemetique_dopa", "qt"],
+    indications: ["Nausées et vomissements"],
+    effets: ["Troubles du rythme cardiaque (allongement du QT)", "Bouche sèche"],
+    conseils: ["Prendre 15 à 30 min avant les repas", "Durée maximale 7 jours", "Nombreuses interactions"],
+    moment: "Avant les repas",
+  },
+  {
+    id: "phloroglucinol", dci: "Phloroglucinol",
+    noms: ["spasfon", "phloroglucinol", "spasmocalm"],
+    famille: "Antispasmodique",
+    classes: [],
+    indications: ["Douleurs spasmodiques digestives, urinaires ou gynécologiques"],
+    effets: ["Rares : réactions cutanées"],
+    conseils: ["Le lyoc se laisse fondre sous la langue", "À prendre lors des douleurs"],
+    moment: "Lors des douleurs",
+  },
+  {
+    id: "macrogol", dci: "Macrogol",
+    noms: ["forlax", "movicol", "transipeg", "macrogol"],
+    famille: "Laxatif osmotique",
+    classes: [],
+    indications: ["Constipation"],
+    effets: ["Ballonnements", "Diarrhée en cas de dose excessive"],
+    conseils: ["Diluer le sachet dans un verre d'eau", "Effet en 24 à 48 h", "Prendre de préférence le matin"],
+    moment: "Le matin",
+  },
+  {
+    id: "loperamide", dci: "Lopéramide",
+    noms: ["imodium", "loperamide", "diaretyl", "dyspagon"],
+    famille: "Antidiarrhéique (ralentisseur du transit)",
+    classes: [],
+    indications: ["Diarrhée aiguë"],
+    effets: ["Constipation", "Ballonnements"],
+    conseils: ["Bien se réhydrater", "Ne pas utiliser en cas de fièvre ou de sang dans les selles", "Prendre après chaque selle liquide, sans dépasser la dose maximale"],
+    moment: "Après chaque selle liquide",
+  },
+
+  // ───────────── Cardiovasculaire ─────────────
+  {
+    id: "atorvastatine", dci: "Atorvastatine",
+    noms: ["atorvastatine", "tahor", "caduet"],
+    famille: "Hypolipémiant – statine",
+    classes: ["statine", "statine_cyp3a4"],
+    indications: ["Hypercholestérolémie", "Prévention cardiovasculaire"],
+    effets: ["Douleurs musculaires", "Troubles digestifs", "Élévation des enzymes hépatiques", "Rhabdomyolyse (rare)"],
+    conseils: ["Prise à heure fixe, de préférence le soir", "Signaler toute douleur musculaire inexpliquée", "Éviter le jus de pamplemousse en grande quantité"],
+    moment: "Le soir, pendant ou en dehors du repas",
+  },
+  {
+    id: "simvastatine", dci: "Simvastatine",
+    noms: ["simvastatine", "zocor", "lodales", "inegy"],
+    famille: "Hypolipémiant – statine",
+    classes: ["statine", "statine_cyp3a4", "simvastatine"],
+    indications: ["Hypercholestérolémie", "Prévention cardiovasculaire"],
+    effets: ["Douleurs musculaires", "Troubles digestifs", "Rhabdomyolyse (rare)"],
+    conseils: ["Prendre le soir", "Éviter le jus de pamplemousse", "Signaler les douleurs musculaires"],
+    moment: "Le soir",
+  },
+  {
+    id: "rosuvastatine", dci: "Rosuvastatine",
+    noms: ["rosuvastatine", "crestor", "fortzaar"],
+    famille: "Hypolipémiant – statine",
+    classes: ["statine"],
+    indications: ["Hypercholestérolémie", "Prévention cardiovasculaire"],
+    effets: ["Douleurs musculaires", "Maux de tête", "Troubles digestifs"],
+    conseils: ["Une prise par jour à heure fixe", "Espacer de 2 h avec les antiacides"],
+    moment: "À heure fixe, pendant ou en dehors du repas",
+  },
+  {
+    id: "ramipril", dci: "Ramipril",
+    noms: ["ramipril", "triatec"],
+    famille: "Antihypertenseur – inhibiteur de l'enzyme de conversion (IEC)",
+    classes: ["iec", "hyperkaliemiant"],
+    indications: ["Hypertension artérielle", "Insuffisance cardiaque", "Protection rénale et cardiovasculaire"],
+    effets: ["Toux sèche", "Hypotension, vertiges", "Hyperkaliémie", "Angio-œdème (rare, urgence)"],
+    conseils: ["Se lever progressivement", "Consulter en urgence en cas de gonflement du visage ou de la gorge", "Surveillance de la kaliémie et de la fonction rénale"],
+    moment: "À heure fixe, de préférence le matin",
+  },
+  {
+    id: "perindopril", dci: "Périndopril",
+    noms: ["perindopril", "coversyl", "preterax", "bipreterax", "covertam", "coveram"],
+    famille: "Antihypertenseur – inhibiteur de l'enzyme de conversion (IEC)",
+    classes: ["iec", "hyperkaliemiant"],
+    indications: ["Hypertension artérielle", "Insuffisance cardiaque", "Maladie coronaire stable"],
+    effets: ["Toux sèche", "Hypotension", "Hyperkaliémie", "Angio-œdème (rare)"],
+    conseils: ["Prendre le matin avant le petit-déjeuner", "Se lever progressivement"],
+    moment: "Le matin, avant le repas",
+  },
+  {
+    id: "enalapril", dci: "Énalapril",
+    noms: ["enalapril", "renitec", "co-renitec"],
+    famille: "Antihypertenseur – inhibiteur de l'enzyme de conversion (IEC)",
+    classes: ["iec", "hyperkaliemiant"],
+    indications: ["Hypertension artérielle", "Insuffisance cardiaque"],
+    effets: ["Toux sèche", "Hypotension", "Hyperkaliémie"],
+    conseils: ["Prise à heure fixe", "Se lever progressivement"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "losartan", dci: "Losartan",
+    noms: ["losartan", "cozaar", "hyzaar"],
+    famille: "Antihypertenseur – antagoniste de l'angiotensine II (ARA II / sartan)",
+    classes: ["ara2", "hyperkaliemiant"],
+    indications: ["Hypertension artérielle", "Néphropathie diabétique", "Insuffisance cardiaque"],
+    effets: ["Vertiges", "Hypotension", "Hyperkaliémie", "Fatigue"],
+    conseils: ["Prise à heure fixe", "Se lever progressivement"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "valsartan", dci: "Valsartan",
+    noms: ["valsartan", "tareg", "cotareg", "exforge", "entresto"],
+    famille: "Antihypertenseur – antagoniste de l'angiotensine II (ARA II / sartan)",
+    classes: ["ara2", "hyperkaliemiant"],
+    indications: ["Hypertension artérielle", "Insuffisance cardiaque", "Post-infarctus"],
+    effets: ["Vertiges", "Hypotension", "Hyperkaliémie"],
+    conseils: ["Prise à heure fixe", "Se lever progressivement"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "irbesartan", dci: "Irbésartan",
+    noms: ["irbesartan", "aprovel", "coaprovel"],
+    famille: "Antihypertenseur – antagoniste de l'angiotensine II (ARA II / sartan)",
+    classes: ["ara2", "hyperkaliemiant"],
+    indications: ["Hypertension artérielle", "Néphropathie diabétique"],
+    effets: ["Vertiges", "Hyperkaliémie", "Fatigue"],
+    conseils: ["Prise à heure fixe"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "amlodipine", dci: "Amlodipine",
+    noms: ["amlodipine", "amlor", "axeler", "sevikar", "exforge", "coveram", "caduet"],
+    famille: "Antihypertenseur – inhibiteur calcique",
+    classes: ["inhibiteur_calcique"],
+    indications: ["Hypertension artérielle", "Angor"],
+    effets: ["Œdèmes des chevilles", "Bouffées de chaleur, rougeur du visage", "Maux de tête", "Palpitations"],
+    conseils: ["Une prise par jour à heure fixe", "Éviter le jus de pamplemousse"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "bisoprolol", dci: "Bisoprolol",
+    noms: ["bisoprolol", "detensiel", "cardensiel", "wytens", "lodoz", "bisoce"],
+    famille: "Bêtabloquant",
+    classes: ["betabloquant", "bradycardisant"],
+    indications: ["Hypertension artérielle", "Insuffisance cardiaque", "Angor", "Troubles du rythme"],
+    effets: ["Fatigue", "Ralentissement du cœur", "Mains et pieds froids", "Troubles du sommeil"],
+    conseils: ["Prendre le matin", "Ne jamais arrêter brutalement", "Peut masquer les signes d'hypoglycémie chez le diabétique"],
+    moment: "Le matin",
+  },
+  {
+    id: "nebivolol", dci: "Nébivolol",
+    noms: ["nebivolol", "temerit", "nebilox"],
+    famille: "Bêtabloquant",
+    classes: ["betabloquant", "bradycardisant"],
+    indications: ["Hypertension artérielle", "Insuffisance cardiaque"],
+    effets: ["Fatigue", "Maux de tête", "Ralentissement du cœur"],
+    conseils: ["Prise à heure fixe", "Ne pas arrêter brutalement"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "furosemide", dci: "Furosémide",
+    noms: ["furosemide", "lasilix"],
+    famille: "Diurétique de l'anse",
+    classes: ["diuretique", "hypokaliemiant"],
+    indications: ["Œdèmes (cardiaques, rénaux, hépatiques)", "Insuffisance cardiaque", "Hypertension"],
+    effets: ["Envies fréquentes d'uriner", "Déshydratation", "Baisse du potassium et du sodium", "Hypotension"],
+    conseils: ["Prendre le matin (éviter le soir pour ne pas se lever la nuit)", "Surveillance du ionogramme", "Signaler crampes, fatigue intense"],
+    moment: "Le matin",
+  },
+  {
+    id: "hydrochlorothiazide", dci: "Hydrochlorothiazide",
+    noms: ["hydrochlorothiazide", "esidrex", "cotareg", "coaprovel", "hyzaar", "co-renitec", "lodoz"],
+    famille: "Diurétique thiazidique",
+    classes: ["diuretique", "hypokaliemiant"],
+    indications: ["Hypertension artérielle", "Œdèmes"],
+    effets: ["Baisse du potassium", "Photosensibilisation", "Augmentation de l'acide urique et de la glycémie"],
+    conseils: ["Prendre le matin", "Éviter l'exposition solaire"],
+    moment: "Le matin",
+  },
+  {
+    id: "spironolactone", dci: "Spironolactone",
+    noms: ["spironolactone", "aldactone", "aldactazine"],
+    famille: "Diurétique épargneur de potassium (anti-aldostérone)",
+    classes: ["diuretique", "epargneur_k", "hyperkaliemiant"],
+    indications: ["Insuffisance cardiaque", "Hypertension résistante", "Hyperaldostéronisme", "Œdèmes"],
+    effets: ["Hyperkaliémie", "Gynécomastie", "Troubles digestifs"],
+    conseils: ["Prendre au cours d'un repas", "Éviter les sels de régime riches en potassium", "Surveillance de la kaliémie"],
+    moment: "Au cours du repas",
+  },
+  {
+    id: "amiodarone", dci: "Amiodarone",
+    noms: ["cordarone", "amiodarone"],
+    famille: "Antiarythmique",
+    classes: ["antiarythmique", "qt", "bradycardisant", "inhibiteur_cyp3a4"],
+    indications: ["Troubles du rythme cardiaque (fibrillation atriale, tachycardies)"],
+    effets: ["Photosensibilisation", "Troubles thyroïdiens", "Dépôts cornéens", "Atteinte pulmonaire ou hépatique", "Ralentissement du cœur"],
+    conseils: ["Protection solaire stricte", "Surveillance thyroïdienne régulière", "Nombreuses interactions médicamenteuses"],
+    moment: "Au cours d'un repas",
+  },
+  {
+    id: "digoxine", dci: "Digoxine",
+    noms: ["digoxine", "hemigoxine"],
+    famille: "Digitalique (tonicardiaque)",
+    classes: ["digoxine", "bradycardisant"],
+    indications: ["Fibrillation atriale (contrôle de la fréquence)", "Insuffisance cardiaque"],
+    effets: ["Nausées, perte d'appétit", "Troubles de la vision (couleurs)", "Troubles du rythme en cas de surdosage"],
+    conseils: ["Prise à heure fixe", "Consulter en cas de nausées ou de troubles visuels", "Surveillance de la digoxinémie et du potassium"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "warfarine", dci: "Warfarine",
+    noms: ["coumadine", "warfarine"],
+    famille: "Anticoagulant – antivitamine K (AVK)",
+    classes: ["avk", "anticoagulant"],
+    indications: ["Fibrillation atriale", "Phlébite, embolie pulmonaire", "Valves cardiaques mécaniques"],
+    effets: ["Saignements (gencives, nez, urines, selles)", "Hématomes"],
+    conseils: ["Prendre le soir, à heure fixe", "Contrôles réguliers de l'INR", "Alimentation équilibrée et stable en vitamine K (choux, épinards, brocolis…)", "Ne prendre aucun médicament sans avis (notamment aspirine, AINS)", "Porter la carte AVK"],
+    moment: "Le soir, à heure fixe",
+  },
+  {
+    id: "fluindione", dci: "Fluindione",
+    noms: ["previscan", "fluindione"],
+    famille: "Anticoagulant – antivitamine K (AVK)",
+    classes: ["avk", "anticoagulant"],
+    indications: ["Fibrillation atriale", "Thromboses veineuses, embolie pulmonaire"],
+    effets: ["Saignements", "Réactions immunoallergiques (rares)"],
+    conseils: ["Prendre le soir à heure fixe", "Contrôles réguliers de l'INR", "Apports stables en vitamine K"],
+    moment: "Le soir, à heure fixe",
+  },
+  {
+    id: "apixaban", dci: "Apixaban",
+    noms: ["eliquis", "apixaban"],
+    famille: "Anticoagulant oral direct (AOD) – anti-Xa",
+    classes: ["aod", "anticoagulant"],
+    indications: ["Fibrillation atriale (prévention de l'AVC)", "Traitement et prévention des phlébites et embolies pulmonaires"],
+    effets: ["Saignements", "Anémie", "Nausées"],
+    conseils: ["Deux prises par jour à 12 h d'intervalle", "Ne pas oublier de prise ni arrêter sans avis", "Signaler le traitement avant tout soin"],
+    moment: "Matin et soir, à 12 h d'intervalle",
+  },
+  {
+    id: "rivaroxaban", dci: "Rivaroxaban",
+    noms: ["xarelto", "rivaroxaban"],
+    famille: "Anticoagulant oral direct (AOD) – anti-Xa",
+    classes: ["aod", "anticoagulant"],
+    indications: ["Fibrillation atriale", "Phlébites et embolies pulmonaires"],
+    effets: ["Saignements", "Anémie"],
+    conseils: ["Les comprimés de 15 et 20 mg doivent être pris au cours d'un repas", "Prise à heure fixe"],
+    moment: "Au cours d'un repas",
+  },
+  {
+    id: "clopidogrel", dci: "Clopidogrel",
+    noms: ["plavix", "clopidogrel", "duoplavin"],
+    famille: "Antiagrégant plaquettaire",
+    classes: ["antiagregant", "clopidogrel"],
+    indications: ["Prévention après infarctus, AVC, artérite", "Après pose de stent (avec l'aspirine)"],
+    effets: ["Saignements", "Ecchymoses", "Troubles digestifs"],
+    conseils: ["Ne pas arrêter sans avis du cardiologue", "Signaler avant tout soin dentaire ou chirurgie"],
+    moment: "Pendant ou en dehors des repas",
+  },
+
+  // ───────────── Endocrinologie / métabolisme ─────────────
+  {
+    id: "metformine", dci: "Metformine",
+    noms: ["metformine", "glucophage", "stagid", "janumet", "eucreas", "velmetia", "xigduo", "synjardy"],
+    famille: "Antidiabétique oral – biguanide",
+    classes: ["antidiabetique", "metformine"],
+    indications: ["Diabète de type 2"],
+    effets: ["Troubles digestifs (diarrhée, nausées) en début de traitement", "Goût métallique", "Carence en vitamine B12 (long cours)", "Acidose lactique (rare)"],
+    conseils: ["Prendre pendant ou à la fin des repas", "À suspendre avant un examen avec produit de contraste iodé ou une anesthésie", "Limiter l'alcool"],
+    moment: "Pendant ou à la fin du repas",
+  },
+  {
+    id: "gliclazide", dci: "Gliclazide",
+    noms: ["gliclazide", "diamicron"],
+    famille: "Antidiabétique oral – sulfamide hypoglycémiant",
+    classes: ["antidiabetique", "sulfamide_hypo"],
+    indications: ["Diabète de type 2"],
+    effets: ["Hypoglycémies", "Prise de poids", "Troubles digestifs"],
+    conseils: ["Prendre au petit-déjeuner, ne jamais sauter le repas qui suit", "Connaître les signes d'hypoglycémie et avoir du sucre sur soi", "Limiter l'alcool"],
+    moment: "Au petit-déjeuner",
+  },
+  {
+    id: "levothyroxine", dci: "Lévothyroxine",
+    noms: ["levothyrox", "levothyroxine", "l-thyroxine", "thyrofix", "tcaps", "euthyral"],
+    famille: "Hormone thyroïdienne",
+    classes: ["levothyroxine"],
+    indications: ["Hypothyroïdie", "Après chirurgie de la thyroïde"],
+    effets: ["Signes de surdosage : palpitations, insomnie, nervosité, amaigrissement, tremblements"],
+    conseils: ["Prendre le matin à jeun, 30 min avant le petit-déjeuner, avec un verre d'eau", "Espacer d'au moins 2 h (idéalement 4 h) avec fer, calcium, antiacides", "Garder la même marque si possible et faire contrôler la TSH"],
+    moment: "Le matin à jeun, 30 min avant le petit-déjeuner",
+  },
+  {
+    id: "allopurinol", dci: "Allopurinol",
+    noms: ["zyloric", "allopurinol"],
+    famille: "Hypo-uricémiant (traitement de fond de la goutte)",
+    classes: ["allopurinol"],
+    indications: ["Goutte (traitement de fond)", "Hyperuricémie"],
+    effets: ["Éruption cutanée (arrêter et consulter)", "Crise de goutte en début de traitement", "Troubles digestifs"],
+    conseils: ["Prendre après un repas", "Boire abondamment (2 L/jour)", "Arrêter immédiatement et consulter en cas d'éruption cutanée"],
+    moment: "Après le repas",
+  },
+  {
+    id: "colchicine", dci: "Colchicine",
+    noms: ["colchicine", "colchimax"],
+    famille: "Anti-goutteux",
+    classes: ["colchicine"],
+    indications: ["Crise de goutte", "Prévention des crises en début de traitement de fond", "Péricardite, maladie périodique"],
+    effets: ["Diarrhée (signe de surdosage)", "Nausées, vomissements"],
+    conseils: ["Une diarrhée doit faire réduire la dose ou consulter", "Nombreuses interactions graves (macrolides…)"],
+    moment: "Pendant ou en dehors des repas",
+  },
+  {
+    id: "fer", dci: "Sels de fer (sulfate/fumarate ferreux)",
+    noms: ["tardyferon", "timoferol", "fumafer", "ferograd", "inofer", "sulfate ferreux", "fer"],
+    famille: "Supplément en fer (antianémique)",
+    classes: ["fer", "chelatable"],
+    indications: ["Anémie par carence en fer", "Prévention de la carence (grossesse)"],
+    effets: ["Selles noires (sans gravité)", "Constipation ou diarrhée", "Nausées, douleurs d'estomac"],
+    conseils: ["Prendre à jeun ou avant le repas pour une meilleure absorption (au cours du repas si mauvaise tolérance)", "Éviter thé, café et laitages au moment de la prise", "Espacer de 2 h avec les autres médicaments (lévothyroxine, antibiotiques…)"],
+    moment: "Avant le repas, à distance du thé/café",
+  },
+  {
+    id: "calcium_vitd", dci: "Calcium + vitamine D3",
+    noms: ["cacit d3", "caltrate", "orocal", "calcidose", "calperos", "ideos", "fixical", "osseans", "calcium vitamine d"],
+    famille: "Supplément vitamino-calcique",
+    classes: ["calcium", "chelatable"],
+    indications: ["Prévention et traitement de l'ostéoporose", "Carence en calcium et vitamine D"],
+    effets: ["Constipation", "Ballonnements", "Hypercalcémie en cas de surdosage"],
+    conseils: ["Prendre de préférence au cours du repas", "Espacer de 2 h avec les antibiotiques (cyclines, quinolones), le fer et la lévothyroxine"],
+    moment: "Au cours du repas",
+  },
+  {
+    id: "vitamine_d", dci: "Cholécalciférol (vitamine D3)",
+    noms: ["uvedose", "zymad", "zyma d", "dedrogyl", "adrigyl", "cholecalciferol", "vitamine d3"],
+    famille: "Vitamine D",
+    classes: [],
+    indications: ["Carence en vitamine D", "Prévention de l'ostéoporose"],
+    effets: ["Hypercalcémie en cas de surdosage"],
+    conseils: ["Ampoules : prendre au cours d'un repas contenant des graisses", "Respecter l'intervalle prescrit (ex. tous les 1 à 3 mois)"],
+    moment: "Au cours d'un repas",
+  },
+  {
+    id: "potassium", dci: "Chlorure de potassium",
+    noms: ["diffu-k", "diffu k", "kaleorid", "chlorure de potassium"],
+    famille: "Supplément en potassium",
+    classes: ["potassium", "hyperkaliemiant"],
+    indications: ["Hypokaliémie (notamment sous diurétiques)"],
+    effets: ["Troubles digestifs", "Hyperkaliémie en cas de surdosage"],
+    conseils: ["Avaler sans croquer à la fin d'un repas avec un grand verre d'eau", "Ne pas s'allonger juste après"],
+    moment: "À la fin du repas",
+  },
+
+  // ───────────── Neurologie / psychiatrie ─────────────
+  {
+    id: "sertraline", dci: "Sertraline",
+    noms: ["zoloft", "sertraline"],
+    famille: "Antidépresseur – inhibiteur sélectif de la recapture de la sérotonine (ISRS)",
+    classes: ["isrs", "serotoninergique"],
+    indications: ["Dépression", "Troubles anxieux, TOC", "Stress post-traumatique"],
+    effets: ["Nausées, troubles digestifs (début de traitement)", "Troubles du sommeil", "Troubles sexuels", "Sueurs", "Risque de saignement"],
+    conseils: ["Effet après 2 à 4 semaines", "Ne pas arrêter brutalement", "Signaler toute idée noire en début de traitement"],
+    moment: "Le matin, pendant le repas",
+  },
+  {
+    id: "escitalopram", dci: "Escitalopram",
+    noms: ["seroplex", "escitalopram"],
+    famille: "Antidépresseur – ISRS",
+    classes: ["isrs", "serotoninergique", "qt"],
+    indications: ["Dépression", "Troubles anxieux"],
+    effets: ["Nausées", "Troubles du sommeil", "Troubles sexuels", "Allongement du QT"],
+    conseils: ["Une prise par jour, à heure fixe", "Ne pas arrêter brutalement"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "citalopram", dci: "Citalopram",
+    noms: ["seropram", "citalopram"],
+    famille: "Antidépresseur – ISRS",
+    classes: ["isrs", "serotoninergique", "qt"],
+    indications: ["Dépression", "Trouble panique"],
+    effets: ["Nausées", "Troubles du sommeil", "Allongement du QT"],
+    conseils: ["Une prise par jour", "Ne pas arrêter brutalement"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "fluoxetine", dci: "Fluoxétine",
+    noms: ["prozac", "fluoxetine"],
+    famille: "Antidépresseur – ISRS",
+    classes: ["isrs", "serotoninergique"],
+    indications: ["Dépression", "TOC", "Boulimie"],
+    effets: ["Nervosité, insomnie", "Nausées", "Troubles sexuels"],
+    conseils: ["Prendre le matin", "Effet après plusieurs semaines"],
+    moment: "Le matin",
+  },
+  {
+    id: "paroxetine", dci: "Paroxétine",
+    noms: ["deroxat", "paroxetine", "divarius"],
+    famille: "Antidépresseur – ISRS",
+    classes: ["isrs", "serotoninergique"],
+    indications: ["Dépression", "Troubles anxieux"],
+    effets: ["Nausées", "Somnolence", "Troubles sexuels", "Syndrome de sevrage marqué à l'arrêt"],
+    conseils: ["Prendre le matin au cours du petit-déjeuner", "Arrêt très progressif"],
+    moment: "Le matin, au cours du repas",
+  },
+  {
+    id: "venlafaxine", dci: "Venlafaxine",
+    noms: ["effexor", "venlafaxine"],
+    famille: "Antidépresseur – IRSNa",
+    classes: ["serotoninergique", "isrs"],
+    indications: ["Dépression", "Troubles anxieux"],
+    effets: ["Nausées", "Sueurs", "Hausse de la tension", "Syndrome de sevrage"],
+    conseils: ["Prendre au cours d'un repas", "Arrêt progressif"],
+    moment: "Au cours du repas",
+  },
+  {
+    id: "alprazolam", dci: "Alprazolam",
+    noms: ["xanax", "alprazolam"],
+    famille: "Anxiolytique – benzodiazépine",
+    classes: ["benzodiazepine", "sedatif"],
+    indications: ["Anxiété"],
+    effets: ["Somnolence", "Troubles de la mémoire", "Baisse de vigilance", "Dépendance"],
+    conseils: ["Traitement de courte durée (12 semaines max)", "Éviter l'alcool et la conduite", "Arrêt progressif"],
+    moment: "Selon prescription",
+  },
+  {
+    id: "bromazepam", dci: "Bromazépam",
+    noms: ["lexomil", "bromazepam", "quietiline"],
+    famille: "Anxiolytique – benzodiazépine",
+    classes: ["benzodiazepine", "sedatif"],
+    indications: ["Anxiété"],
+    effets: ["Somnolence", "Baisse de vigilance", "Dépendance"],
+    conseils: ["Éviter l'alcool", "Prudence en cas de conduite", "Arrêt progressif"],
+    moment: "Selon prescription",
+  },
+  {
+    id: "oxazepam", dci: "Oxazépam",
+    noms: ["seresta", "oxazepam"],
+    famille: "Anxiolytique – benzodiazépine",
+    classes: ["benzodiazepine", "sedatif"],
+    indications: ["Anxiété", "Sevrage alcoolique"],
+    effets: ["Somnolence", "Dépendance"],
+    conseils: ["Éviter l'alcool", "Arrêt progressif"],
+    moment: "Selon prescription",
+  },
+  {
+    id: "zolpidem", dci: "Zolpidem",
+    noms: ["stilnox", "zolpidem"],
+    famille: "Hypnotique (apparenté aux benzodiazépines)",
+    classes: ["hypnotique", "sedatif"],
+    indications: ["Insomnie occasionnelle ou transitoire"],
+    effets: ["Somnolence le lendemain", "Troubles de la mémoire", "Somnambulisme", "Dépendance"],
+    conseils: ["Prendre juste au coucher, au lit", "Durée maximale 4 semaines", "Pas d'alcool, pas de conduite le lendemain matin en cas de somnolence"],
+    moment: "Au coucher",
+  },
+  {
+    id: "hydroxyzine", dci: "Hydroxyzine",
+    noms: ["atarax", "hydroxyzine"],
+    famille: "Anxiolytique antihistaminique",
+    classes: ["sedatif", "qt"],
+    indications: ["Anxiété", "Démangeaisons (prurit)", "Troubles du sommeil légers"],
+    effets: ["Somnolence", "Bouche sèche", "Allongement du QT"],
+    conseils: ["Éviter l'alcool", "Prudence en cas de conduite"],
+    moment: "Le soir de préférence",
+  },
+  {
+    id: "lithium", dci: "Lithium",
+    noms: ["teralithe", "lithium"],
+    famille: "Thymorégulateur",
+    classes: ["lithium"],
+    indications: ["Trouble bipolaire (prévention des rechutes)"],
+    effets: ["Tremblements", "Soif, urines abondantes", "Prise de poids", "Troubles thyroïdiens et rénaux", "Surdosage : diarrhée, vomissements, confusion"],
+    conseils: ["Lithémie régulière", "Apports en sel et en eau constants", "Consulter en cas de fièvre, diarrhée ou déshydratation"],
+    moment: "À heure fixe, au cours du repas",
+  },
+  {
+    id: "sumatriptan", dci: "Sumatriptan",
+    noms: ["imigrane", "imiject", "sumatriptan"],
+    famille: "Antimigraineux – triptan",
+    classes: ["triptan", "serotoninergique"],
+    indications: ["Crise de migraine"],
+    effets: ["Sensation de serrement thoracique", "Bouffées de chaleur", "Somnolence, vertiges"],
+    conseils: ["Prendre dès le début de la céphalée", "Pas plus de 2 prises par 24 h", "Éviter l'abus (céphalées par abus médicamenteux)"],
+    moment: "Dès le début de la crise",
+  },
+
+  // ───────────── Respiratoire / allergie ─────────────
+  {
+    id: "cetirizine", dci: "Cétirizine",
+    noms: ["zyrtec", "virlix", "cetirizine", "humex allergie"],
+    famille: "Antihistaminique H1",
+    classes: ["antihistaminique"],
+    indications: ["Rhinite allergique", "Urticaire"],
+    effets: ["Somnolence légère", "Fatigue", "Bouche sèche"],
+    conseils: ["Prendre le soir en cas de somnolence", "Éviter l'alcool"],
+    moment: "Le soir",
+  },
+  {
+    id: "desloratadine", dci: "Desloratadine",
+    noms: ["aerius", "desloratadine"],
+    famille: "Antihistaminique H1",
+    classes: ["antihistaminique"],
+    indications: ["Rhinite allergique", "Urticaire"],
+    effets: ["Fatigue", "Maux de tête", "Bouche sèche"],
+    conseils: ["Une prise par jour, pendant ou en dehors des repas"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "bilastine", dci: "Bilastine",
+    noms: ["inorial", "bilaska", "bilastine"],
+    famille: "Antihistaminique H1",
+    classes: ["antihistaminique"],
+    indications: ["Rhinite allergique", "Urticaire"],
+    effets: ["Maux de tête", "Somnolence (rare)"],
+    conseils: ["Prendre à jeun : 1 h avant ou 2 h après un repas ou un jus de fruit"],
+    moment: "À jeun",
+  },
+  {
+    id: "salbutamol", dci: "Salbutamol",
+    noms: ["ventoline", "airomir", "salbutamol", "asmasal"],
+    famille: "Bronchodilatateur bêta-2 mimétique d'action courte",
+    classes: ["beta2"],
+    indications: ["Crise d'asthme", "Prévention de l'asthme d'effort", "BPCO"],
+    effets: ["Tremblements", "Palpitations", "Maux de tête", "Baisse du potassium (fortes doses)"],
+    conseils: ["Bien agiter, expirer, inhaler en déclenchant la bouffée, retenir la respiration 10 s", "Une chambre d'inhalation améliore l'efficacité", "Consulter si l'usage devient plus fréquent"],
+    moment: "En cas de crise ou avant l'effort",
+  },
+  {
+    id: "budesonide_formoterol", dci: "Budésonide + formotérol",
+    noms: ["symbicort", "duoresp", "gibiter"],
+    famille: "Corticoïde inhalé + bronchodilatateur de longue durée",
+    classes: ["beta2"],
+    indications: ["Asthme (traitement de fond)", "BPCO"],
+    effets: ["Mycose de la bouche", "Voix enrouée", "Tremblements, palpitations"],
+    conseils: ["Se rincer la bouche après chaque utilisation", "Traitement de fond à poursuivre même sans symptômes"],
+    moment: "Matin et soir",
+  },
+  {
+    id: "montelukast", dci: "Montélukast",
+    noms: ["singulair", "montelukast"],
+    famille: "Antileucotriène (antiasthmatique)",
+    classes: [],
+    indications: ["Asthme (traitement additionnel)", "Rhinite allergique associée"],
+    effets: ["Maux de tête", "Troubles du sommeil, cauchemars", "Troubles de l'humeur (signaler)"],
+    conseils: ["Prendre le soir"],
+    moment: "Le soir",
+  },
+
+  // ───────────── Divers ─────────────
+  {
+    id: "methotrexate", dci: "Méthotrexate",
+    noms: ["methotrexate", "novatrex", "imeth", "metoject", "nordimet"],
+    famille: "Immunosuppresseur / antimétabolite",
+    classes: ["methotrexate"],
+    indications: ["Polyarthrite rhumatoïde", "Psoriasis sévère", "Certains cancers (à fortes doses)"],
+    effets: ["Nausées", "Aphtes", "Baisse des globules (surveillance)", "Atteinte hépatique et pulmonaire"],
+    conseils: ["⚠️ En rhumatologie : UNE prise par SEMAINE, toujours le même jour (erreurs graves si prise quotidienne)", "Acide folique souvent associé, à distance de la prise", "Éviter l'alcool, contraception efficace obligatoire", "Prises de sang régulières"],
+    moment: "Une fois par semaine, le même jour",
+  },
+  {
+    id: "acide_folique", dci: "Acide folique",
+    noms: ["speciafoldine", "acide folique"],
+    famille: "Vitamine B9",
+    classes: [],
+    indications: ["Carence en folates", "Prévention des effets du méthotrexate", "Grossesse (prévention des anomalies du tube neural)"],
+    effets: ["Très rares"],
+    conseils: ["Sous méthotrexate : à prendre à distance de la prise hebdomadaire (souvent 24 à 48 h après)"],
+    moment: "Selon prescription",
+  },
+  {
+    id: "hydroxychloroquine", dci: "Hydroxychloroquine",
+    noms: ["plaquenil", "hydroxychloroquine"],
+    famille: "Antipaludéen de synthèse (immunomodulateur)",
+    classes: ["qt"],
+    indications: ["Lupus", "Polyarthrite rhumatoïde"],
+    effets: ["Troubles digestifs", "Atteinte rétinienne (surveillance ophtalmologique)", "Allongement du QT"],
+    conseils: ["Prendre au cours d'un repas", "Bilan ophtalmologique régulier", "Espacer de 2 h avec les antiacides"],
+    moment: "Au cours d'un repas",
+  },
+  {
+    id: "tamsulosine", dci: "Tamsulosine",
+    noms: ["josir", "omix", "mecir", "tamsulosine", "omexel"],
+    famille: "Alpha-bloquant urologique",
+    classes: ["hypotenseur"],
+    indications: ["Hypertrophie bénigne de la prostate", "Aide à l'expulsion d'un calcul urinaire"],
+    effets: ["Vertiges, hypotension au lever", "Troubles de l'éjaculation", "Congestion nasale"],
+    conseils: ["Prendre après le petit-déjeuner, toujours au même moment", "Se lever progressivement", "Signaler le traitement avant une chirurgie de la cataracte"],
+    moment: "Après le petit-déjeuner",
+  },
+  {
+    id: "enoxaparine", dci: "Énoxaparine",
+    noms: ["lovenox", "enoxaparine", "inhixa"],
+    famille: "Anticoagulant injectable – héparine de bas poids moléculaire (HBPM)",
+    classes: ["anticoagulant", "hbpm", "hyperkaliemiant"],
+    indications: ["Prévention des phlébites (chirurgie, immobilisation)", "Traitement des phlébites et embolies pulmonaires"],
+    effets: ["Hématomes au point d'injection", "Saignements", "Baisse des plaquettes (surveillance)"],
+    conseils: ["Injection sous-cutanée dans le ventre, en alternant les côtés", "Ne pas purger la bulle d'air", "Ne pas frotter après l'injection"],
+    moment: "À heure fixe",
+  },
+
+  // ───────────── Compléments (base étendue) ─────────────
+  {
+    id: "racecadotril", dci: "Racécadotril",
+    noms: ["tiorfan", "tiorfast", "racecadotril"],
+    famille: "Antidiarrhéique (antisécrétoire)",
+    classes: [],
+    indications: ["Diarrhée aiguë"],
+    effets: ["Maux de tête", "Éruption cutanée (rare)"],
+    conseils: ["Prendre de préférence avant les repas", "Associer une bonne réhydratation", "Consulter si fièvre ou sang dans les selles"],
+    moment: "Avant les repas",
+  },
+  {
+    id: "diosmectite", dci: "Diosmectite",
+    noms: ["smecta", "diosmectite"],
+    famille: "Pansement digestif (argile)",
+    classes: ["antiacide"],
+    indications: ["Diarrhée aiguë", "Douleurs liées à l'œsophage, l'estomac ou l'intestin"],
+    effets: ["Constipation"],
+    conseils: ["Espacer de 2 h avec les autres médicaments (diminue leur absorption)", "Diluer le sachet dans un demi-verre d'eau"],
+    moment: "À distance des autres médicaments",
+  },
+  {
+    id: "ondansetron", dci: "Ondansétron",
+    noms: ["zophren", "ondansetron", "setofilm"],
+    famille: "Antiémétique (antagoniste 5-HT3)",
+    classes: ["qt", "serotoninergique"],
+    indications: ["Nausées et vomissements (chimiothérapie, post-opératoire)"],
+    effets: ["Constipation", "Maux de tête", "Allongement du QT"],
+    conseils: ["Prise à heure fixe selon le schéma prescrit"],
+    moment: "Selon prescription",
+  },
+  {
+    id: "morphine", dci: "Morphine",
+    noms: ["skenan", "actiskenan", "oramorph", "moscontin", "sevredol", "morphine"],
+    famille: "Antalgique opioïde fort (palier 3)",
+    classes: ["opioide", "sedatif"],
+    indications: ["Douleurs intenses ou rebelles aux autres antalgiques"],
+    effets: ["Constipation (quasi constante : laxatif associé)", "Nausées", "Somnolence, confusion", "Dépression respiratoire en cas de surdosage", "Dépendance"],
+    conseils: ["Respecter strictement les horaires (forme LP toutes les 12 h)", "Laxatif systématique", "Pas d'alcool, prudence au volant", "Ne pas croquer les gélules LP"],
+    moment: "À heures fixes (LP : toutes les 12 h)",
+  },
+  {
+    id: "oxycodone", dci: "Oxycodone",
+    noms: ["oxycontin", "oxynorm", "oxynormoro", "oxycodone"],
+    famille: "Antalgique opioïde fort (palier 3)",
+    classes: ["opioide", "sedatif"],
+    indications: ["Douleurs intenses"],
+    effets: ["Constipation", "Nausées", "Somnolence", "Dépression respiratoire", "Dépendance"],
+    conseils: ["Horaires stricts (LP toutes les 12 h)", "Laxatif associé", "Pas d'alcool"],
+    moment: "À heures fixes",
+  },
+  {
+    id: "nefopam", dci: "Néfopam",
+    noms: ["acupan", "nefopam"],
+    famille: "Antalgique non opioïde d'action centrale",
+    classes: [],
+    indications: ["Douleurs aiguës, notamment post-opératoires"],
+    effets: ["Sueurs", "Nausées", "Tachycardie", "Bouche sèche", "Rétention urinaire"],
+    conseils: ["Souvent pris sur un sucre (ampoule) : ne pas l'avaler pur sans avis", "Prudence en cas de glaucome ou de troubles urinaires"],
+    moment: "Selon prescription",
+  },
+  {
+    id: "pregabaline", dci: "Prégabaline",
+    noms: ["lyrica", "pregabaline"],
+    famille: "Antiépileptique utilisé contre les douleurs neuropathiques",
+    classes: ["sedatif"],
+    indications: ["Douleurs neuropathiques", "Épilepsie", "Anxiété généralisée"],
+    effets: ["Somnolence, vertiges", "Prise de poids", "Œdèmes", "Vision floue", "Risque d'abus et de dépendance"],
+    conseils: ["Pas d'alcool, prudence au volant", "Ne pas arrêter brutalement", "Associé aux opioïdes : risque de dépression respiratoire"],
+    moment: "Pendant ou en dehors des repas",
+  },
+  {
+    id: "gabapentine", dci: "Gabapentine",
+    noms: ["neurontin", "gabapentine"],
+    famille: "Antiépileptique utilisé contre les douleurs neuropathiques",
+    classes: ["sedatif"],
+    indications: ["Douleurs neuropathiques", "Épilepsie"],
+    effets: ["Somnolence", "Vertiges", "Fatigue", "Prise de poids"],
+    conseils: ["Espacer de 2 h avec les antiacides", "Ne pas arrêter brutalement"],
+    moment: "Pendant ou en dehors des repas",
+  },
+  {
+    id: "amitriptyline", dci: "Amitriptyline",
+    noms: ["laroxyl", "elavil", "amitriptyline"],
+    famille: "Antidépresseur tricyclique",
+    classes: ["sedatif", "qt", "serotoninergique"],
+    indications: ["Douleurs neuropathiques", "Dépression", "Prévention de la migraine"],
+    effets: ["Somnolence", "Bouche sèche, constipation", "Rétention urinaire", "Hypotension au lever", "Troubles du rythme en cas de surdosage"],
+    conseils: ["Prendre le soir", "Gouttes : compter précisément", "Prudence chez le sujet âgé (chutes, confusion)"],
+    moment: "Le soir",
+  },
+  {
+    id: "mirtazapine", dci: "Mirtazapine",
+    noms: ["norset", "mirtazapine"],
+    famille: "Antidépresseur (noradrénergique et sérotoninergique)",
+    classes: ["sedatif", "serotoninergique"],
+    indications: ["Dépression"],
+    effets: ["Somnolence", "Augmentation de l'appétit, prise de poids", "Bouche sèche"],
+    conseils: ["Prendre le soir au coucher", "Ne pas arrêter brutalement"],
+    moment: "Au coucher",
+  },
+  {
+    id: "quetiapine", dci: "Quétiapine",
+    noms: ["xeroquel", "quetiapine"],
+    famille: "Antipsychotique atypique",
+    classes: ["sedatif", "qt"],
+    indications: ["Trouble bipolaire", "Schizophrénie", "Dépression (en association)"],
+    effets: ["Somnolence", "Prise de poids, troubles métaboliques", "Hypotension au lever", "Allongement du QT"],
+    conseils: ["Prendre le soir", "Surveillance du poids et de la glycémie", "Pas d'alcool"],
+    moment: "Le soir",
+  },
+  {
+    id: "risperidone", dci: "Rispéridone",
+    noms: ["risperdal", "risperidone"],
+    famille: "Antipsychotique atypique",
+    classes: ["sedatif", "qt"],
+    indications: ["Schizophrénie", "Épisodes maniaques", "Troubles du comportement"],
+    effets: ["Somnolence", "Prise de poids", "Mouvements anormaux", "Hausse de la prolactine"],
+    conseils: ["Prise à heure fixe", "Ne pas arrêter sans avis"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "levetiracetam", dci: "Lévétiracétam",
+    noms: ["keppra", "levetiracetam"],
+    famille: "Antiépileptique",
+    classes: ["sedatif"],
+    indications: ["Épilepsie"],
+    effets: ["Somnolence, fatigue", "Irritabilité, troubles de l'humeur", "Maux de tête"],
+    conseils: ["Deux prises par jour à 12 h d'intervalle", "Ne jamais arrêter brutalement"],
+    moment: "Matin et soir",
+  },
+  {
+    id: "valproate", dci: "Acide valproïque / valproate",
+    noms: ["depakine", "depakote", "depamide", "micropakine", "valproate"],
+    famille: "Antiépileptique et thymorégulateur",
+    classes: ["valproate", "sedatif"],
+    indications: ["Épilepsie", "Trouble bipolaire"],
+    effets: ["Tremblements", "Prise de poids", "Chute des cheveux", "Atteinte hépatique et pancréatique (rare)", "⚠️ Très toxique pour le fœtus"],
+    conseils: ["Contre-indiqué pendant la grossesse : contraception efficace obligatoire chez la femme en âge de procréer", "Ne jamais arrêter brutalement", "Prises de sang régulières"],
+    moment: "Au cours des repas",
+  },
+  {
+    id: "carbamazepine", dci: "Carbamazépine",
+    noms: ["tegretol", "carbamazepine"],
+    famille: "Antiépileptique (inducteur enzymatique)",
+    classes: ["inducteur", "sedatif"],
+    indications: ["Épilepsie", "Névralgie du trijumeau", "Trouble bipolaire"],
+    effets: ["Vertiges, somnolence", "Éruption cutanée (consulter)", "Baisse du sodium", "Baisse des globules"],
+    conseils: ["Rend inefficaces de nombreux médicaments (pilule contraceptive, anticoagulants…)", "Arrêter et consulter en cas d'éruption cutanée"],
+    moment: "Pendant les repas",
+  },
+  {
+    id: "insuline_lente", dci: "Insuline basale (glargine, détémir, dégludec)",
+    noms: ["lantus", "toujeo", "abasaglar", "levemir", "tresiba", "insuline glargine", "insuline"],
+    famille: "Antidiabétique – insuline d'action lente",
+    classes: ["antidiabetique", "insuline"],
+    indications: ["Diabète de type 1 et 2"],
+    effets: ["Hypoglycémies", "Prise de poids", "Lipodystrophies si on pique toujours au même endroit"],
+    conseils: ["Injection à heure fixe chaque jour", "Varier les sites d'injection", "Conserver le stylo entamé à température ambiante, les autres au réfrigérateur", "Toujours avoir du sucre sur soi"],
+    moment: "À heure fixe (souvent le soir)",
+  },
+  {
+    id: "insuline_rapide", dci: "Insuline rapide (asparte, lispro, glulisine)",
+    noms: ["novorapid", "humalog", "apidra", "fiasp", "lyumjev"],
+    famille: "Antidiabétique – insuline d'action rapide",
+    classes: ["antidiabetique", "insuline"],
+    indications: ["Diabète (insuline des repas)"],
+    effets: ["Hypoglycémies", "Lipodystrophies"],
+    conseils: ["Injecter juste avant le repas (0 à 15 min)", "Adapter la dose à la glycémie et au repas selon le protocole", "Ne pas injecter si le repas est sauté"],
+    moment: "Juste avant les repas",
+  },
+  {
+    id: "sitagliptine", dci: "Sitagliptine",
+    noms: ["januvia", "xelevia", "sitagliptine", "janumet", "velmetia"],
+    famille: "Antidiabétique oral – inhibiteur de la DPP-4 (gliptine)",
+    classes: ["antidiabetique"],
+    indications: ["Diabète de type 2"],
+    effets: ["Maux de tête", "Infections ORL", "Pancréatite (rare : douleur abdominale intense)"],
+    conseils: ["Une prise par jour, pendant ou en dehors des repas"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "dapagliflozine", dci: "Dapagliflozine",
+    noms: ["forxiga", "dapagliflozine", "xigduo"],
+    famille: "Antidiabétique – inhibiteur de SGLT2 (gliflozine)",
+    classes: ["antidiabetique", "diuretique"],
+    indications: ["Diabète de type 2", "Insuffisance cardiaque", "Maladie rénale chronique"],
+    effets: ["Mycoses génitales", "Infections urinaires", "Déshydratation", "Acidocétose (rare)"],
+    conseils: ["Bonne hygiène intime et hydratation", "Suspendre en cas de déshydratation, de jeûne ou avant une chirurgie (avis médical)"],
+    moment: "Le matin",
+  },
+  {
+    id: "empagliflozine", dci: "Empagliflozine",
+    noms: ["jardiance", "empagliflozine", "synjardy"],
+    famille: "Antidiabétique – inhibiteur de SGLT2 (gliflozine)",
+    classes: ["antidiabetique", "diuretique"],
+    indications: ["Diabète de type 2", "Insuffisance cardiaque", "Maladie rénale chronique"],
+    effets: ["Mycoses génitales", "Infections urinaires", "Déshydratation"],
+    conseils: ["Bonne hydratation", "Suspendre en cas de déshydratation ou de jeûne (avis médical)"],
+    moment: "Le matin",
+  },
+  {
+    id: "ticagrelor", dci: "Ticagrélor",
+    noms: ["brilique", "ticagrelor"],
+    famille: "Antiagrégant plaquettaire",
+    classes: ["antiagregant"],
+    indications: ["Après infarctus ou syndrome coronarien aigu (avec l'aspirine)"],
+    effets: ["Saignements", "Essoufflement", "Ecchymoses"],
+    conseils: ["Deux prises par jour", "Ne jamais arrêter sans avis du cardiologue"],
+    moment: "Matin et soir",
+  },
+  {
+    id: "dabigatran", dci: "Dabigatran",
+    noms: ["pradaxa", "dabigatran"],
+    famille: "Anticoagulant oral direct (AOD) – antithrombine",
+    classes: ["aod", "anticoagulant"],
+    indications: ["Fibrillation atriale", "Phlébites et embolies pulmonaires"],
+    effets: ["Saignements", "Brûlures d'estomac"],
+    conseils: ["Avaler la gélule entière avec un verre d'eau, sans l'ouvrir", "Deux prises par jour à 12 h d'intervalle", "Conserver dans l'emballage d'origine"],
+    moment: "Matin et soir",
+  },
+  {
+    id: "edoxaban", dci: "Édoxaban",
+    noms: ["lixiana", "edoxaban"],
+    famille: "Anticoagulant oral direct (AOD) – anti-Xa",
+    classes: ["aod", "anticoagulant"],
+    indications: ["Fibrillation atriale", "Phlébites et embolies pulmonaires"],
+    effets: ["Saignements", "Anémie"],
+    conseils: ["Une prise par jour à heure fixe"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "candesartan", dci: "Candésartan",
+    noms: ["atacand", "kenzen", "hytacand", "cokenzen", "candesartan"],
+    famille: "Antihypertenseur – antagoniste de l'angiotensine II (ARA II / sartan)",
+    classes: ["ara2", "hyperkaliemiant"],
+    indications: ["Hypertension artérielle", "Insuffisance cardiaque"],
+    effets: ["Vertiges", "Hyperkaliémie"],
+    conseils: ["Prise à heure fixe", "Se lever progressivement"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "olmesartan", dci: "Olmésartan",
+    noms: ["alteis", "olmetec", "alteisduo", "sevikar", "olmesartan"],
+    famille: "Antihypertenseur – antagoniste de l'angiotensine II (ARA II / sartan)",
+    classes: ["ara2", "hyperkaliemiant"],
+    indications: ["Hypertension artérielle"],
+    effets: ["Vertiges", "Hyperkaliémie", "Diarrhée chronique (rare : consulter)"],
+    conseils: ["Prise à heure fixe"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "lercanidipine", dci: "Lercanidipine",
+    noms: ["zanidip", "lercan", "zanextra", "lercanidipine"],
+    famille: "Antihypertenseur – inhibiteur calcique",
+    classes: ["inhibiteur_calcique"],
+    indications: ["Hypertension artérielle"],
+    effets: ["Œdèmes des chevilles", "Bouffées de chaleur", "Maux de tête"],
+    conseils: ["Prendre au moins 15 min avant un repas", "Éviter le jus de pamplemousse"],
+    moment: "15 min avant le repas",
+  },
+  {
+    id: "indapamide", dci: "Indapamide",
+    noms: ["fludex", "indapamide", "preterax", "bipreterax"],
+    famille: "Diurétique apparenté aux thiazidiques",
+    classes: ["diuretique", "hypokaliemiant"],
+    indications: ["Hypertension artérielle"],
+    effets: ["Baisse du potassium et du sodium", "Vertiges", "Photosensibilisation"],
+    conseils: ["Prendre le matin", "Surveillance du ionogramme"],
+    moment: "Le matin",
+  },
+  {
+    id: "propranolol", dci: "Propranolol",
+    noms: ["avlocardyl", "hemangiol", "propranolol"],
+    famille: "Bêtabloquant non cardiosélectif",
+    classes: ["betabloquant", "bradycardisant"],
+    indications: ["Hypertension", "Prévention de la migraine", "Tremblements essentiels", "Trac, palpitations"],
+    effets: ["Fatigue", "Mains froides", "Cauchemars", "Crise d'asthme chez l'asthmatique"],
+    conseils: ["Contre-indiqué en cas d'asthme", "Ne pas arrêter brutalement"],
+    moment: "À heure fixe",
+  },
+  {
+    id: "fluconazole", dci: "Fluconazole",
+    noms: ["triflucan", "beagyne", "fluconazole"],
+    famille: "Antifongique (azolé)",
+    classes: ["antifongique_azole", "qt"],
+    indications: ["Mycoses vaginales", "Candidoses buccales ou œsophagiennes"],
+    effets: ["Nausées", "Maux de tête", "Atteinte hépatique (rare)", "Allongement du QT"],
+    conseils: ["Mycose vaginale : souvent une prise unique", "Nombreuses interactions (anticoagulants, statines…)"],
+    moment: "Pendant ou en dehors des repas",
+  },
+  {
+    id: "metronidazole", dci: "Métronidazole",
+    noms: ["flagyl", "metronidazole", "birodogyl", "rodogyl"],
+    famille: "Antibiotique / antiparasitaire (nitro-imidazolé)",
+    classes: ["antibiotique", "metronidazole"],
+    indications: ["Infections dentaires, gynécologiques, digestives", "Parasitoses (amibiase, giardiase, trichomonase)"],
+    effets: ["Goût métallique", "Nausées", "Urines foncées (sans gravité)", "Neuropathie (traitement prolongé)"],
+    conseils: ["⚠️ Aucun alcool pendant le traitement et 48 h après (effet antabuse)", "Prendre au cours des repas"],
+    moment: "Au cours des repas",
+  },
+  {
+    id: "nitrofurantoine", dci: "Nitrofurantoïne",
+    noms: ["furadantine", "nitrofurantoine"],
+    famille: "Antibiotique urinaire",
+    classes: ["antibiotique"],
+    indications: ["Cystite (2e intention)"],
+    effets: ["Nausées", "Urines colorées", "Réactions pulmonaires ou hépatiques (rares, graves)"],
+    conseils: ["Prendre au cours des repas", "Traitement court uniquement (5 à 7 jours)", "Consulter en cas de toux ou d'essoufflement"],
+    moment: "Au cours des repas",
+  },
+  {
+    id: "cefpodoxime", dci: "Cefpodoxime",
+    noms: ["orelox", "cefpodoxime"],
+    famille: "Antibiotique – céphalosporine de 3e génération",
+    classes: ["antibiotique"],
+    indications: ["Sinusites, otites, angines", "Infections respiratoires et urinaires"],
+    effets: ["Diarrhée", "Nausées", "Allergie"],
+    conseils: ["Prendre au cours d'un repas (meilleure absorption)", "Aller au bout du traitement"],
+    moment: "Au cours du repas",
+  },
+  {
+    id: "pristinamycine", dci: "Pristinamycine",
+    noms: ["pyostacine", "pristinamycine"],
+    famille: "Antibiotique – synergistine",
+    classes: ["antibiotique"],
+    indications: ["Infections cutanées", "Infections respiratoires (alternative en cas d'allergie)"],
+    effets: ["Troubles digestifs", "Réactions cutanées graves (rares : arrêter et consulter)"],
+    conseils: ["Prendre au cours des repas", "Arrêter et consulter en cas d'éruption"],
+    moment: "Au cours des repas",
+  },
+  {
+    id: "valaciclovir", dci: "Valaciclovir",
+    noms: ["zelitrex", "valaciclovir"],
+    famille: "Antiviral (herpès, zona)",
+    classes: [],
+    indications: ["Zona", "Herpès labial et génital"],
+    effets: ["Maux de tête", "Nausées", "Troubles rénaux en cas de déshydratation"],
+    conseils: ["Débuter le plus tôt possible", "Bien s'hydrater"],
+    moment: "Pendant ou en dehors des repas",
+  },
+  {
+    id: "alendronate", dci: "Acide alendronique",
+    noms: ["fosamax", "adrovance", "fosavance", "alendronate"],
+    famille: "Bisphosphonate (traitement de l'ostéoporose)",
+    classes: ["bisphosphonate"],
+    indications: ["Ostéoporose"],
+    effets: ["Brûlures de l'œsophage", "Douleurs musculaires ou osseuses", "Atteinte de la mâchoire (rare : soins dentaires à signaler)"],
+    conseils: ["Une fois par semaine, le matin à jeun avec un grand verre d'eau plate", "Rester debout ou assis 30 min, ne rien manger ni boire d'autre pendant 30 min", "Prendre le calcium à un autre moment de la journée"],
+    moment: "Une fois par semaine, le matin à jeun",
+  },
+  {
+    id: "pilule_combinee", dci: "Contraceptif œstroprogestatif",
+    noms: ["optilova", "leeloo", "minidril", "ludeal", "trinordiol", "jasmine", "jasminelle", "lovavulo", "zoely"],
+    famille: "Contraceptif oral combiné",
+    classes: ["contraceptif_oral"],
+    indications: ["Contraception"],
+    effets: ["Nausées, tension des seins (début)", "Saignements entre les règles", "Risque de thrombose (phlébite, embolie)"],
+    conseils: ["Prendre chaque jour à la même heure", "En cas d'oubli > 12 h : continuer et utiliser des préservatifs 7 jours (voir notice)", "Arrêter de fumer"],
+    moment: "Chaque jour à la même heure",
+  },
+  {
+    id: "desogestrel", dci: "Désogestrel",
+    noms: ["cerazette", "antigone", "optimizette", "desogestrel"],
+    famille: "Contraceptif progestatif (micropilule)",
+    classes: ["contraceptif_oral"],
+    indications: ["Contraception"],
+    effets: ["Saignements irréguliers", "Acné", "Maux de tête"],
+    conseils: ["En continu, à la même heure (oubli toléré jusqu'à 12 h)"],
+    moment: "Chaque jour à la même heure",
+  },
+  {
+    id: "mometasone_nasal", dci: "Mométasone (spray nasal)",
+    noms: ["nasonex", "mometasone"],
+    famille: "Corticoïde nasal",
+    classes: [],
+    indications: ["Rhinite allergique", "Polypes nasaux"],
+    effets: ["Saignements de nez", "Irritation nasale"],
+    conseils: ["Se moucher avant", "Diriger le spray vers l'extérieur de la narine", "Effet après quelques jours d'utilisation régulière"],
+    moment: "Le matin",
+  },
+];
+
+// Index de recherche : nom normalisé → médicament
+function normaliser(s) {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9/ -]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function trouverParId(id) {
+  return MEDICAMENTS.find((m) => m.id === id) || null;
+}
+
+// ── js/data/interactions.js ──
+// Règles d'interactions médicamenteuses — inspirées du Thésaurus des interactions
+// médicamenteuses de l'ANSM (niveaux : CI, AD, PE, APEC). Liste volontairement
+// limitée aux interactions les plus fréquentes et les plus importantes.
+//
+// Un sélecteur correspond soit à un identifiant de médicament, soit à une classe
+// (voir le champ `classes` de medicaments.js).
+
+const NIVEAUX = {
+  CI:   { rang: 4, libelle: "Contre-indication", couleur: "danger" },
+  AD:   { rang: 3, libelle: "Association déconseillée", couleur: "warning" },
+  PE:   { rang: 2, libelle: "Précaution d'emploi", couleur: "caution" },
+  APEC: { rang: 1, libelle: "À prendre en compte", couleur: "info" },
+};
+
+const REGLES = [
+  // ── Saignement ──
+  { a: ["avk"], b: ["aod", "hbpm"], niveau: "AD",
+    risque: "Association de deux anticoagulants : risque hémorragique majeur.",
+    conduite: "Uniquement lors d'un relais encadré par le médecin." },
+  { a: ["aod"], b: ["aod"], niveau: "CI",
+    risque: "Deux anticoagulants oraux directs : risque hémorragique majeur.",
+    conduite: "Ne jamais associer. Contacter le prescripteur." },
+  { a: ["avk"], b: ["avk"], niveau: "CI",
+    risque: "Deux antivitamines K : surdosage et hémorragie.",
+    conduite: "Ne jamais associer. Contacter le prescripteur." },
+  { a: ["anticoagulant"], b: ["ains"], niveau: "AD",
+    risque: "Majoration du risque hémorragique (notamment digestif).",
+    conduite: "Éviter les AINS ; préférer le paracétamol. Si indispensable : surveillance clinique étroite." },
+  { a: ["anticoagulant"], b: ["antiagregant"], niveau: "APEC",
+    risque: "Augmentation du risque de saignement.",
+    conduite: "Association parfois volontaire (cardiologie) : elle doit être explicitement validée par le médecin." },
+  { a: ["antiagregant"], b: ["ains"], niveau: "PE",
+    risque: "Majoration du risque hémorragique et d'ulcère ; l'ibuprofène peut diminuer l'effet antiagrégant de l'aspirine.",
+    conduite: "Éviter l'automédication par AINS ; prise courte et protection gastrique si nécessaire." },
+  { a: ["isrs"], b: ["anticoagulant", "antiagregant", "ains"], niveau: "PE",
+    risque: "Les antidépresseurs sérotoninergiques augmentent le risque de saignement.",
+    conduite: "Surveillance clinique ; signaler tout saignement inhabituel." },
+  { a: ["avk"], b: ["antibiotique"], niveau: "PE",
+    risque: "Les antibiotiques peuvent déséquilibrer l'INR (risque hémorragique).",
+    conduite: "Contrôle de l'INR pendant et après l'antibiothérapie." },
+  { a: ["avk"], b: ["amiodarone"], niveau: "PE",
+    risque: "L'amiodarone augmente fortement l'effet de l'AVK.",
+    conduite: "Contrôle rapproché de l'INR et adaptation de la dose." },
+  { a: ["avk"], b: ["paracetamol"], niveau: "APEC",
+    risque: "À doses élevées et prolongées (≥ 4 g/j pendant plusieurs jours), le paracétamol peut augmenter l'INR.",
+    conduite: "Contrôler l'INR en cas de prise prolongée." },
+
+  // ── AINS ──
+  { a: ["ains"], b: ["ains"], niveau: "AD",
+    risque: "Deux anti-inflammatoires : majoration du risque d'ulcère et d'hémorragie digestive, sans gain d'efficacité.",
+    conduite: "N'en garder qu'un seul." },
+  { a: ["ains"], b: ["iec", "ara2", "diuretique"], niveau: "PE",
+    risque: "Insuffisance rénale aiguë (surtout chez le sujet âgé ou déshydraté) et baisse de l'effet antihypertenseur.",
+    conduite: "Bien s'hydrater ; surveillance de la fonction rénale. Éviter l'association triple (AINS + IEC/sartan + diurétique)." },
+  { a: ["ains"], b: ["methotrexate"], niveau: "AD",
+    risque: "Augmentation de la toxicité du méthotrexate (sanguine, rénale).",
+    conduite: "À éviter, sauf faibles doses de méthotrexate en rhumatologie sous surveillance biologique." },
+  { a: ["ains"], b: ["lithium"], niveau: "AD",
+    risque: "Augmentation de la lithémie avec risque de surdosage.",
+    conduite: "Éviter ; sinon surveillance étroite de la lithémie." },
+  { a: ["ains"], b: ["corticoide"], niveau: "APEC",
+    risque: "Augmentation du risque d'ulcère et d'hémorragie digestive.",
+    conduite: "Une protection gastrique (IPP) peut être discutée." },
+
+  // ── Potassium / rein ──
+  { a: ["iec"], b: ["ara2"], niveau: "AD",
+    risque: "Double blocage du système rénine-angiotensine : insuffisance rénale, hyperkaliémie.",
+    conduite: "Association à éviter, sauf avis spécialisé." },
+  { a: ["iec", "ara2"], b: ["epargneur_k", "potassium"], niveau: "PE",
+    risque: "Hyperkaliémie potentiellement grave.",
+    conduite: "Contrôle régulier de la kaliémie et de la créatinine." },
+  { a: ["epargneur_k"], b: ["potassium"], niveau: "AD",
+    risque: "Hyperkaliémie potentiellement mortelle.",
+    conduite: "Association à éviter sauf hypokaliémie documentée et surveillance étroite." },
+  { a: ["lithium"], b: ["diuretique", "iec", "ara2"], niveau: "AD",
+    risque: "Diminution de l'élimination du lithium : surdosage.",
+    conduite: "Surveillance stricte de la lithémie et adaptation de la dose." },
+  { a: ["digoxine"], b: ["hypokaliemiant"], niveau: "PE",
+    risque: "La baisse du potassium favorise la toxicité de la digoxine.",
+    conduite: "Surveiller la kaliémie, corriger une hypokaliémie." },
+
+  // ── Interactions métaboliques (CYP3A4…) ──
+  { a: ["clarithromycine"], b: ["simvastatine"], niveau: "CI",
+    risque: "Augmentation importante de la simvastatine : risque de rhabdomyolyse.",
+    conduite: "Suspendre la statine pendant l'antibiotique ou changer d'antibiotique." },
+  { a: ["clarithromycine"], b: ["atorvastatine"], niveau: "AD",
+    risque: "Augmentation de l'atorvastatine : risque musculaire (rhabdomyolyse).",
+    conduite: "Suspendre la statine pendant l'antibiothérapie ou utiliser la dose minimale." },
+  { a: ["amiodarone"], b: ["simvastatine"], niveau: "PE",
+    risque: "Risque musculaire accru.",
+    conduite: "Ne pas dépasser 20 mg/j de simvastatine ou choisir une autre statine." },
+  { a: ["macrolide"], b: ["colchicine"], niveau: "CI",
+    risque: "Augmentation de la toxicité de la colchicine, potentiellement mortelle.",
+    conduite: "Ne pas associer : choisir un autre antibiotique." },
+  { a: ["clarithromycine"], b: ["domperidone"], niveau: "CI",
+    risque: "Augmentation de la dompéridone et allongement du QT : troubles du rythme graves.",
+    conduite: "Ne pas associer." },
+  { a: ["amiodarone"], b: ["digoxine"], niveau: "PE",
+    risque: "Augmentation de la digoxinémie et ralentissement cardiaque.",
+    conduite: "Surveillance ECG et digoxinémie, réduire la dose de digoxine." },
+  { a: ["ipp_cyp2c19"], b: ["clopidogrel"], niveau: "AD",
+    risque: "L'oméprazole et l'ésoméprazole diminuent l'efficacité du clopidogrel.",
+    conduite: "Préférer le pantoprazole si un IPP est nécessaire." },
+  { a: ["sulfamide_hypo"], b: ["fluoroquinolone", "clarithromycine"], niveau: "PE",
+    risque: "Risque d'hypoglycémie.",
+    conduite: "Renforcer l'autosurveillance glycémique." },
+  { a: ["fluoroquinolone"], b: ["antidiabetique"], niveau: "APEC",
+    risque: "Les fluoroquinolones peuvent déséquilibrer la glycémie (hypo- ou hyperglycémie).",
+    conduite: "Surveillance glycémique." },
+
+  // ── Absorption (chélation) ──
+  { a: ["fluoroquinolone", "cycline"], b: ["fer", "calcium", "antiacide"], niveau: "PE",
+    risque: "Diminution de l'absorption de l'antibiotique (risque d'échec).",
+    conduite: "Prendre l'antibiotique au moins 2 h avant (ou 4 h après) le fer, le calcium ou l'antiacide." },
+  { a: ["levothyroxine"], b: ["fer", "calcium", "antiacide"], niveau: "PE",
+    risque: "Diminution de l'absorption de la lévothyroxine.",
+    conduite: "Espacer d'au moins 2 h (idéalement 4 h)." },
+  { a: ["levothyroxine"], b: ["ipp"], niveau: "APEC",
+    risque: "Les IPP peuvent diminuer l'absorption de la lévothyroxine.",
+    conduite: "Contrôle de la TSH après introduction de l'IPP." },
+  { a: ["antiacide"], b: ["statine", "hydroxychloroquine", "levothyroxine", "fer"], niveau: "PE",
+    risque: "Les antiacides diminuent l'absorption de nombreux médicaments.",
+    conduite: "Espacer les prises d'au moins 2 h." },
+  { a: ["fer"], b: ["calcium"], niveau: "APEC",
+    risque: "Le calcium diminue l'absorption du fer.",
+    conduite: "Prendre le fer à distance (2 h) du calcium." },
+
+  // ── Cœur : QT et fréquence ──
+  { a: ["qt"], b: ["qt"], niveau: "AD", generique: true,
+    risque: "Addition d'effets d'allongement de l'intervalle QT : risque de troubles du rythme graves (torsades de pointes).",
+    conduite: "Association à éviter ; si nécessaire, ECG et surveillance du potassium." },
+  { a: ["domperidone"], b: ["qt"], niveau: "CI",
+    risque: "Dompéridone + autre médicament allongeant le QT : troubles du rythme graves.",
+    conduite: "Ne pas associer." },
+  { a: ["bradycardisant"], b: ["bradycardisant"], niveau: "PE",
+    risque: "Ralentissement excessif du cœur (bradycardie), malaises.",
+    conduite: "Surveillance clinique et ECG." },
+  { a: ["betabloquant"], b: ["sulfamide_hypo", "metformine"], niveau: "APEC",
+    risque: "Les bêtabloquants peuvent masquer les signes d'hypoglycémie (palpitations, tremblements).",
+    conduite: "Renforcer l'autosurveillance glycémique." },
+  { a: ["corticoide"], b: ["antidiabetique"], niveau: "PE",
+    risque: "Les corticoïdes augmentent la glycémie.",
+    conduite: "Renforcer la surveillance glycémique, adaptation éventuelle du traitement." },
+  { a: ["fluoroquinolone"], b: ["corticoide"], niveau: "PE",
+    risque: "Risque majoré de tendinopathie, voire de rupture du tendon (surtout sujet âgé).",
+    conduite: "Arrêter et consulter en cas de douleur tendineuse." },
+
+  // ── Système nerveux ──
+  { a: ["isrs"], b: ["isrs"], niveau: "AD",
+    risque: "Deux antidépresseurs sérotoninergiques : risque de syndrome sérotoninergique.",
+    conduite: "Association à éviter sauf avis spécialisé (relais encadré)." },
+  { a: ["isrs"], b: ["tramadol"], niveau: "PE",
+    risque: "Syndrome sérotoninergique (agitation, fièvre, tremblements, diarrhée) et risque de convulsions.",
+    conduite: "Surveillance ; consulter en cas d'agitation, sueurs, tremblements." },
+  { a: ["isrs"], b: ["triptan"], niveau: "APEC",
+    risque: "Risque de syndrome sérotoninergique.",
+    conduite: "Être attentif aux symptômes (agitation, tremblements, fièvre)." },
+  { a: ["isrs"], b: ["lithium"], niveau: "APEC",
+    risque: "Risque de syndrome sérotoninergique.",
+    conduite: "Surveillance clinique." },
+  { a: ["opioide"], b: ["benzodiazepine", "hypnotique"], niveau: "AD",
+    risque: "Dépression respiratoire et sédation pouvant être graves.",
+    conduite: "Association à éviter ; si nécessaire, doses minimales et durée la plus courte." },
+  { a: ["opioide"], b: ["opioide"], niveau: "AD",
+    risque: "Deux opioïdes : majoration de la sédation et de la dépression respiratoire.",
+    conduite: "N'en garder qu'un seul." },
+  { a: ["benzodiazepine", "hypnotique"], b: ["benzodiazepine", "hypnotique"], niveau: "AD",
+    risque: "Addition des effets sédatifs : somnolence, chutes, dépression respiratoire.",
+    conduite: "Éviter d'associer deux benzodiazépines ou apparentés." },
+  { a: ["sedatif"], b: ["sedatif"], niveau: "APEC", generique: true,
+    risque: "Majoration de la somnolence et de la baisse de vigilance.",
+    conduite: "Prudence en cas de conduite ; éviter l'alcool." },
+  { a: ["antiemetique_dopa"], b: ["antiemetique_dopa"], niveau: "AD",
+    risque: "Deux antiémétiques antidopaminergiques : effets indésirables neurologiques et cardiaques.",
+    conduite: "N'en garder qu'un seul." },
+
+  // ── Méthotrexate ──
+  { a: ["methotrexate"], b: ["penicilline"], niveau: "AD",
+    risque: "Les pénicillines augmentent la toxicité sanguine du méthotrexate.",
+    conduite: "Surveillance de la numération sanguine ; avis du prescripteur." },
+  { a: ["methotrexate"], b: ["ipp"], niveau: "APEC",
+    risque: "Possible augmentation de la toxicité du méthotrexate (surtout à fortes doses).",
+    conduite: "À signaler au prescripteur." },
+
+  // ── Inducteurs enzymatiques, antifongiques, divers ──
+  { a: ["inducteur"], b: ["contraceptif_oral"], niveau: "AD",
+    risque: "La carbamazépine diminue l'efficacité de la contraception orale (risque de grossesse).",
+    conduite: "Utiliser une autre méthode contraceptive (DIU…)." },
+  { a: ["inducteur"], b: ["aod"], niveau: "AD",
+    risque: "Diminution importante de l'effet anticoagulant (risque de thrombose).",
+    conduite: "Association à éviter : avis du prescripteur." },
+  { a: ["inducteur"], b: ["avk"], niveau: "PE",
+    risque: "Diminution de l'effet de l'AVK.",
+    conduite: "Contrôle rapproché de l'INR, notamment à l'introduction et à l'arrêt." },
+  { a: ["inducteur"], b: ["valproate"], niveau: "PE",
+    risque: "Modification des concentrations des deux antiépileptiques.",
+    conduite: "Surveillance clinique et des dosages sanguins." },
+  { a: ["antifongique_azole"], b: ["avk"], niveau: "PE",
+    risque: "Augmentation de l'effet de l'AVK (risque hémorragique).",
+    conduite: "Contrôle de l'INR pendant et après le traitement." },
+  { a: ["antifongique_azole"], b: ["statine_cyp3a4"], niveau: "PE",
+    risque: "Augmentation du risque musculaire.",
+    conduite: "Suspendre la statine pendant un traitement court, ou avis médical." },
+  { a: ["antifongique_azole"], b: ["sulfamide_hypo"], niveau: "PE",
+    risque: "Risque d'hypoglycémie.",
+    conduite: "Surveillance glycémique renforcée." },
+  { a: ["metronidazole"], b: ["avk"], niveau: "AD",
+    risque: "Forte augmentation de l'effet de l'AVK (risque hémorragique).",
+    conduite: "Contrôle rapproché de l'INR, adaptation de la dose." },
+  { a: ["metronidazole"], b: ["lithium"], niveau: "AD",
+    risque: "Augmentation de la lithémie.",
+    conduite: "Surveiller étroitement la lithémie." },
+  { a: ["bisphosphonate"], b: ["calcium", "fer", "antiacide"], niveau: "PE",
+    risque: "Diminution de l'absorption du bisphosphonate.",
+    conduite: "Prendre le bisphosphonate à jeun, au moins 30 min (idéalement 2 h) avant le calcium, le fer ou l'antiacide." },
+  { a: ["insuline"], b: ["betabloquant"], niveau: "APEC",
+    risque: "Les bêtabloquants peuvent masquer les signes d'hypoglycémie.",
+    conduite: "Renforcer l'autosurveillance glycémique." },
+  { a: ["insuline"], b: ["sulfamide_hypo"], niveau: "APEC",
+    risque: "Risque d'hypoglycémie accru.",
+    conduite: "Association fréquente mais surveillance glycémique attentive." },
+  { a: ["opioide"], b: ["sedatif"], niveau: "PE", generique: true,
+    risque: "Opioïde associé à un autre médicament sédatif (prégabaline, antidépresseur sédatif, antipsychotique…) : somnolence et risque de dépression respiratoire.",
+    conduite: "Doses minimales, pas d'alcool, consulter en cas de somnolence importante ou de respiration ralentie." },
+  { a: ["valproate"], b: ["contraceptif_oral"], niveau: "APEC",
+    risque: "Le valproate est très toxique pour le fœtus : une contraception efficace est indispensable.",
+    conduite: "Vérifier avec le médecin que la contraception est adaptée." },
+
+  // ── Doublons ──
+  { a: ["paracetamol"], b: ["paracetamol"], niveau: "AD",
+    risque: "Deux médicaments contenant du paracétamol : risque de surdosage et d'atteinte hépatique grave.",
+    conduite: "Ne pas dépasser 3 g de paracétamol par jour au total ; n'en garder qu'un." },
+  { a: ["statine"], b: ["statine"], niveau: "AD",
+    risque: "Deux statines : risque musculaire sans bénéfice supplémentaire.",
+    conduite: "Doublon probable : vérifier avec le médecin ou le pharmacien." },
+  { a: ["ipp"], b: ["ipp"], niveau: "APEC",
+    risque: "Deux inhibiteurs de la pompe à protons : doublon thérapeutique.",
+    conduite: "Doublon probable : vérifier l'ordonnance." },
+  { a: ["antihistaminique"], b: ["antihistaminique"], niveau: "APEC",
+    risque: "Deux antihistaminiques : doublon, majoration des effets indésirables.",
+    conduite: "Doublon probable : n'en garder qu'un." },
+  { a: ["corticoide"], b: ["corticoide"], niveau: "APEC",
+    risque: "Deux corticoïdes par voie générale : doublon.",
+    conduite: "Vérifier l'ordonnance." },
+];
+
+function correspond(med, selecteurs) {
+  return selecteurs.some((s) => s === med.id || med.classes.includes(s));
+}
+
+/**
+ * Analyse les interactions entre une liste de médicaments de la base.
+ * @param {Array<{med:object, nom:string}>} items
+ * @returns {Array} interactions triées par gravité décroissante
+ */
+function analyserInteractions(items) {
+  const resultats = [];
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      const A = items[i], B = items[j];
+      if (!A.med || !B.med) continue;
+      const memeMed = A.med.id === B.med.id;
+      const vus = new Set();
+      REGLES.forEach((r, idx) => {
+        const ok = (correspond(A.med, r.a) && correspond(B.med, r.b)) ||
+                   (correspond(B.med, r.a) && correspond(A.med, r.b));
+        if (ok && !vus.has(idx)) {
+          vus.add(idx);
+          resultats.push({ ...r, a: A.nom, b: B.nom });
+        }
+      });
+      if (memeMed) {
+        resultats.push({
+          a: A.nom, b: B.nom, niveau: "AD",
+          risque: "Le même médicament apparaît deux fois : risque de surdosage.",
+          conduite: "Vérifier l'ordonnance : il s'agit probablement d'un doublon ou d'un changement de dose.",
+        });
+      }
+    }
+  }
+  // Pour une même paire, on évite les règles génériques redondantes (ex. "sédatif + sédatif")
+  // lorsqu'une règle plus grave et plus spécifique couvre déjà la paire.
+  const parPaire = new Map();
+  for (const r of resultats) {
+    const k = [r.a, r.b].sort().join("|");
+    if (!parPaire.has(k)) parPaire.set(k, []);
+    parPaire.get(k).push(r);
+  }
+  const final = [];
+  for (const liste of parPaire.values()) {
+    const max = Math.max(...liste.map((r) => NIVEAUX[r.niveau].rang));
+    for (const r of liste) {
+      if (r.generique && NIVEAUX[r.niveau].rang < max) continue;
+      final.push(r);
+    }
+  }
+  return final.sort((x, y) => NIVEAUX[y.niveau].rang - NIVEAUX[x.niveau].rang);
+}
+
+// ── js/parser.js ──
+// Analyse du texte d'une ordonnance (issu de l'OCR) pour en extraire
+// les médicaments et leur posologie.
+
+const MOMENTS = ["matin", "midi", "soir", "coucher"];
+
+const UNITES = {
+  comprime: "comprimé", cp: "comprimé", gelule: "gélule", gel: "gélule", sachet: "sachet",
+  cuillere: "cuillère", cuill: "cuillère", bouffee: "bouffée", goutte: "goutte", ampoule: "ampoule",
+  suppositoire: "suppositoire", suppo: "suppositoire", application: "application", dose: "dose",
+  injection: "injection", pulverisation: "pulvérisation", capsule: "capsule", lyoc: "lyoc",
+  pipette: "pipette", patch: "patch", unidose: "unidose",
+};
+
+const NOMBRES = { un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, demi: 0.5, "1/2": 0.5 };
+
+// Distance de Levenshtein bornée (tolérance aux erreurs d'OCR)
+function levenshtein(a, b, max = 3) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let cur = [i];
+    let minLigne = i;
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      minLigne = Math.min(minLigne, cur[j]);
+    }
+    if (minLigne > max) return max + 1;
+    for (let j = 0; j <= b.length; j++) prev[j] = cur[j];
+  }
+  return prev[b.length];
+}
+
+// Construit l'index des noms (y compris noms composés)
+const INDEX = [];
+for (const m of MEDICAMENTS) {
+  const noms = new Set([...m.noms, normaliser(m.dci)]);
+  for (const n of noms) INDEX.push({ nom: normaliser(n), med: m });
+}
+// Les noms les plus longs d'abord (ex. « dafalgan codeine » avant « dafalgan »)
+INDEX.sort((x, y) => y.nom.length - x.nom.length);
+
+/** Recherche un médicament de la base dans une ligne de texte. */
+function detecterMedicament(ligne) {
+  const txt = " " + normaliser(ligne) + " ";
+  // 1) correspondance exacte (mot entier)
+  for (const e of INDEX) {
+    if (txt.includes(" " + e.nom + " ") || txt.includes(" " + e.nom + "/")) return { med: e.med, trouve: e.nom, exact: true };
+  }
+  // 2) correspondance approchée mot à mot (erreurs d'OCR)
+  const mots = txt.trim().split(" ").filter((w) => w.length >= 5);
+  let meilleur = null;
+  for (const mot of mots) {
+    for (const e of INDEX) {
+      if (e.nom.includes(" ") || e.nom.length < 5) continue;
+      const tol = e.nom.length >= 9 ? 2 : 1;
+      const d = levenshtein(mot, e.nom, tol);
+      if (d <= tol && (!meilleur || d < meilleur.d)) meilleur = { med: e.med, trouve: mot, d };
+    }
+  }
+  return meilleur ? { med: meilleur.med, trouve: meilleur.trouve, exact: false } : null;
+}
+
+function nombre(s) {
+  if (!s) return null;
+  s = s.replace(",", ".");
+  if (NOMBRES[s] !== undefined) return NOMBRES[s];
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+/** Extrait la posologie d'un bloc de texte relatif à un médicament. */
+function extrairePosologie(bloc) {
+  const t = normaliser(bloc).replace(/\s*-\s*/g, "-");
+  const res = {
+    dosage: "",
+    quantite: 1,
+    unite: "prise",
+    moments: [],
+    heures: [],
+    siBesoin: false,
+    dureeJours: null,
+    hebdomadaire: false,
+    remarques: [],
+  };
+
+  const dos = bloc.match(/(\d+(?:[.,]\d+)?)\s*(mg|g|µg|mcg|ui|ml|%)\b/i);
+  if (dos) res.dosage = dos[1].replace(".", ",") + " " + dos[2].toLowerCase();
+
+  const formes = "(comprimes?|cp|cps|gelules?|gel|sachets?|cuilleres?|cuill|bouffees?|gouttes?|ampoules?|suppositoires?|suppo|applications?|doses?|injections?|pulverisations?|capsules?|lyocs?|pipettes?|patchs?|unidoses?)";
+  const q = t.match(new RegExp("(\\d+(?:[.,]\\d+)?|un|une|deux|trois|quatre|demi|1/2)\\s*" + formes));
+  if (q) {
+    res.quantite = nombre(q[1]) ?? 1;
+    res.unite = UNITES[q[2].replace(/s$/, "")] || q[2];
+  }
+
+  // Schéma "1-0-1" ou "1-1-1-1" (matin-midi-soir[-coucher])
+  const schema = t.match(/\b(\d(?:[.,]5)?)-(\d(?:[.,]5)?)-(\d(?:[.,]5)?)(?:-(\d(?:[.,]5)?))?\b/);
+  if (schema) {
+    const vals = schema.slice(1, 5).map((v) => (v === undefined ? 0 : nombre(v)));
+    vals.forEach((v, i) => { if (v > 0) res.moments.push(MOMENTS[i]); });
+    const nz = vals.filter((v) => v > 0);
+    if (nz.length && nz.every((v) => v === nz[0])) res.quantite = nz[0];
+  }
+
+  // Moments explicites
+  if (!res.moments.length) {
+    if (/\bmatin|petit[- ]dejeuner|au lever|reveil\b/.test(t)) res.moments.push("matin");
+    if (/\bmidi|dejeuner\b/.test(t.replace(/petit[- ]dejeuner/g, ""))) res.moments.push("midi");
+    if (/\bsoir|diner|souper\b/.test(t)) res.moments.push("soir");
+    if (/\bcoucher|nuit\b/.test(t)) res.moments.push("coucher");
+  }
+
+  // Fréquence : "3 fois par jour", "x2/j", "2 prises par jour"
+  const freq = t.match(/(\d|un|une|deux|trois|quatre)\s*(?:fois|x|prises?)\s*(?:par|\/|le)?\s*(?:jour|j|24 ?h)\b/) ||
+               t.match(/\bx\s*(\d)\s*(?:\/|par)\s*(?:jour|j)\b/);
+  const parJour = freq ? nombre(freq[1]) : null;
+  if (!res.moments.length && parJour) {
+    res.moments = { 1: ["matin"], 2: ["matin", "soir"], 3: ["matin", "midi", "soir"], 4: ["matin", "midi", "soir", "coucher"] }[parJour] || [];
+  }
+
+  // "toutes les 6 heures"
+  const inter = t.match(/toutes les (\d+)\s*(?:h|heures)\b/);
+  if (inter) {
+    const pas = parseInt(inter[1], 10);
+    if (pas >= 4 && pas <= 24) {
+      res.moments = [];
+      for (let h = 8; h < 8 + 24; h += pas) res.heures.push(String(h % 24).padStart(2, "0") + ":00");
+    }
+  }
+
+  if (/\bsi besoin|si douleur|en cas de|si fievre|a la demande|si necessaire\b/.test(t)) res.siBesoin = true;
+  if (/par semaine|\/ ?semaine|hebdomadaire|une fois par semaine|1 fois par semaine/.test(t)) res.hebdomadaire = true;
+
+  // Durée
+  const d = t.match(/(?:pendant|durant|pdt|sur|x)\s*(\d+|un|une|deux|trois|quatre|cinq|six)\s*(jours?|j|semaines?|sem|mois)\b/) ||
+            t.match(/\b(\d+)\s*(jours?|j|semaines?|mois)\b(?!.*\bpar\b)/);
+  if (d) {
+    const n = nombre(d[1]) || 0;
+    const u = d[2];
+    res.dureeJours = u.startsWith("sem") ? n * 7 : u.startsWith("mois") ? n * 30 : n;
+  }
+  if (/qsp\s*(\d+)\s*(mois|jours?|semaines?)/.test(t)) {
+    const m = t.match(/qsp\s*(\d+)\s*(mois|jours?|semaines?)/);
+    const n = parseInt(m[1], 10);
+    res.dureeJours = m[2].startsWith("mois") ? n * 30 : m[2].startsWith("sem") ? n * 7 : n;
+  }
+  if (/a renouveler|renouvelable/.test(t)) res.remarques.push("Ordonnance renouvelable");
+  if (/a jeun/.test(t)) res.remarques.push("À jeun");
+  if (/(au cours|pendant|au milieu|a la fin) d[ue]s? repas/.test(t)) res.remarques.push("Pendant le repas");
+  if (/avant (le|les) repas/.test(t)) res.remarques.push("Avant le repas");
+
+  if (!res.moments.length && !res.heures.length && !res.siBesoin) res.moments = ["matin"];
+  return res;
+}
+
+// Nom affiché : celui écrit sur l'ordonnance (ex. « Doliprane ») si reconnu exactement, sinon la DCI.
+function nomAffiche(det) {
+  if (!det.exact || det.trouve === normaliser(det.med.dci)) return det.med.dci;
+  return det.trouve.replace(/(^|[ -])([a-z])/g, (_, s, c) => s + c.toUpperCase());
+}
+
+/**
+ * Analyse un texte complet d'ordonnance.
+ * Découpe en blocs : chaque ligne contenant un médicament reconnu ouvre un bloc ;
+ * les lignes suivantes (posologie) lui sont rattachées jusqu'au prochain médicament.
+ */
+function analyserOrdonnance(texte) {
+  const lignes = texte.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const blocs = [];
+  for (const ligne of lignes) {
+    const det = detecterMedicament(ligne);
+    if (det) blocs.push({ det, lignes: [ligne] });
+    else if (blocs.length) {
+      const dernier = blocs[blocs.length - 1];
+      if (dernier.lignes.length < 4) dernier.lignes.push(ligne);
+    }
+  }
+  return blocs.map(({ det, lignes }) => {
+    const bloc = lignes.join(" ");
+    const poso = extrairePosologie(bloc);
+    return {
+      nom: nomAffiche(det) + (poso.dosage ? " " + poso.dosage : ""),
+      medId: det.med.id,
+      texteSource: bloc,
+      certitude: det.exact ? "haute" : "moyenne",
+      ...poso,
+    };
+  });
+}
+
+// ── js/store.js ──
+// Persistance des données.
+//  - Toujours : stockage local du navigateur (affichage immédiat, hors ligne).
+//  - Sur claude.ai : en plus, sauvegarde privée sur le compte de l'utilisateur
+//    (documents sous data/users/<id>/, illisibles par toute autre personne),
+//    ce qui évite de perdre l'historique et synchronise téléphone et ordinateur.
+
+const CLE = "medoc-planner:v1";
+
+const REGLAGES_DEFAUT = {
+  heures: { matin: "08:00", midi: "12:30", soir: "19:30", coucher: "22:00" },
+  alarmes: false,
+  son: true,
+  rappelMinutes: 15, // relance si la prise n'est pas cochée
+  cleApi: "",
+  avertissementLu: false,
+};
+
+function normaliserEtat(brut = {}) {
+  return {
+    traitements: brut.traitements || [],
+    prises: brut.prises || {},
+    reglages: { ...REGLAGES_DEFAUT, ...(brut.reglages || {}), heures: { ...REGLAGES_DEFAUT.heures, ...(brut.reglages?.heures || {}) } },
+  };
+}
+
+function lireLocal() {
+  try { return normaliserEtat(JSON.parse(localStorage.getItem(CLE) || "{}")); }
+  catch { return normaliserEtat(); }
+}
+
+const etat = lireLocal();
+
+const abonnes = new Set();
+function abonner(fn) { abonnes.add(fn); }
+function notifierAbonnes() { abonnes.forEach((fn) => fn(etat)); }
+
+// ─────────── Sauvegarde sur le compte claude.ai ───────────
+let compte = null;          // { db, uid }
+let dernierEnvoi = {};      // id de document → JSON envoyé (pour n'écrire que ce qui change)
+let envoiPrevu = null;
+let envoiEnCours = Promise.resolve();
+
+function documentsAEnvoyer() {
+  const { cleApi, ...reglages } = etat.reglages; // la clé API ne quitte jamais l'appareil
+  const docs = { etat: { traitements: etat.traitements, reglages, maj: Date.now() } };
+  // Historique des prises découpé par mois (taille de document limitée)
+  for (const [k, v] of Object.entries(etat.prises)) {
+    const mois = "prises-" + k.slice(0, 7);
+    (docs[mois] ||= { prises: {} }).prises[k] = v;
+  }
+  // Les mois dont toutes les prises ont été retirées sont vidés
+  for (const id of Object.keys(dernierEnvoi)) if (id.startsWith("prises-") && !docs[id]) docs[id] = { prises: {} };
+  return docs;
+}
+
+function planifierEnvoi() {
+  if (!compte) return;
+  clearTimeout(envoiPrevu);
+  envoiPrevu = setTimeout(() => {
+    envoiEnCours = envoiEnCours.then(async () => {
+      const docs = documentsAEnvoyer();
+      for (const [id, data] of Object.entries(docs)) {
+        const json = JSON.stringify(id === "etat" ? { ...data, maj: 0 } : data);
+        if (dernierEnvoi[id] === json) continue;
+        try {
+          await compte.db.collection("data/users/" + compte.uid).doc(id).set(data);
+          dernierEnvoi[id] = json;
+        } catch (e) { console.warn("Sauvegarde du compte impossible", id, e); }
+      }
+    });
+  }, 800);
+}
+
+/** Connecte la sauvegarde du compte (claude.ai) et récupère les données existantes. */
+async function connecterCompte() {
+  const [db, user] = await Promise.all([capacite("db"), capacite("user")]);
+  if (!db || !user) return false;
+  let uid;
+  try { uid = await user.id(); } catch { return false; }
+  if (!uid) return false;
+  compte = { db, uid };
+  try {
+    const snap = await db.collection("data/users/" + uid).limit(1000).get();
+    const docs = {};
+    // Les snapshots sont figés : copie profonde avant toute modification
+    snap.docs.forEach((d) => { if (d.exists) docs[d.id] = JSON.parse(JSON.stringify(d.data())); });
+    if (docs.etat) {
+      const prises = {};
+      for (const [id, d] of Object.entries(docs)) if (id.startsWith("prises-")) Object.assign(prises, d.prises || {});
+      const cleApi = etat.reglages.cleApi;
+      Object.assign(etat, normaliserEtat({ traitements: docs.etat.traitements, reglages: docs.etat.reglages, prises }));
+      etat.reglages.cleApi = cleApi;
+      // Mémorise ce qui est déjà stocké pour ne pas le réécrire
+      for (const [id, data] of Object.entries(documentsAEnvoyer())) {
+        dernierEnvoi[id] = JSON.stringify(id === "etat" ? { ...data, maj: 0 } : data);
+      }
+      ecrireLocal();
+      notifierAbonnes();
+    } else if (etat.traitements.length) {
+      planifierEnvoi(); // première sauvegarde des données locales existantes
+    }
+    return true;
+  } catch (e) {
+    console.warn("Lecture du compte impossible", e);
+    return false;
+  }
+}
+
+function compteConnecte() { return !!compte; }
+
+function ecrireLocal() {
+  try { localStorage.setItem(CLE, JSON.stringify(etat)); } catch { /* stockage indisponible */ }
+}
+
+function sauver() {
+  ecrireLocal();
+  planifierEnvoi();
+  notifierAbonnes();
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function aujourdhui(d = new Date()) {
+  const z = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+}
+
+function ajouterTraitement(t) {
+  etat.traitements.push({ id: uid(), debut: aujourdhui(), ...t });
+  sauver();
+}
+
+function majTraitement(id, champs) {
+  const t = etat.traitements.find((x) => x.id === id);
+  if (t) Object.assign(t, champs);
+  sauver();
+}
+
+function supprimerTraitement(id) {
+  etat.traitements = etat.traitements.filter((x) => x.id !== id);
+  for (const k of Object.keys(etat.prises)) if (k.includes("|" + id + "|")) delete etat.prises[k];
+  sauver();
+}
+
+function clePrise(date, id, heure) { return `${date}|${id}|${heure}`; }
+
+function basculerPrise(date, id, heure) {
+  const k = clePrise(date, id, heure);
+  if (etat.prises[k]) delete etat.prises[k];
+  else etat.prises[k] = new Date().toISOString();
+  sauver();
+}
+
+function remplacerDonnees(d) {
+  etat.traitements = d.traitements;
+  etat.prises = d.prises || {};
+  Object.assign(etat.reglages, d.reglages || {});
+  sauver();
+}
+
+async function toutEffacer() {
+  const neuf = normaliserEtat();
+  neuf.reglages.avertissementLu = true;
+  Object.assign(etat, neuf);
+  try { localStorage.removeItem(CLE); } catch { /* rien */ }
+  if (compte) {
+    await envoiEnCours;
+    for (const id of Object.keys(dernierEnvoi)) {
+      try { await compte.db.collection("data/users/" + compte.uid).doc(id).delete(); } catch { /* rien */ }
+    }
+    dernierEnvoi = {};
+  }
+  sauver();
+}
+
+// ── js/planning.js ──
+// Calcul du planning des prises.
+
+const JOUR_MS = 86400000;
+
+function dateLocale(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Le traitement est-il actif à cette date ? */
+function estActif(t, iso) {
+  const jour = dateLocale(iso);
+  const debut = dateLocale(t.debut);
+  const ecart = Math.round((jour - debut) / JOUR_MS);
+  if (ecart < 0) return false;
+  if (t.dureeJours && ecart >= t.dureeJours) return false;
+  if (t.hebdomadaire) return jour.getDay() === (t.jourSemaine ?? debut.getDay());
+  return true;
+}
+
+/** Date de fin (dernier jour inclus) ou null. */
+function dateFin(t) {
+  if (!t.dureeJours) return null;
+  return new Date(dateLocale(t.debut).getTime() + (t.dureeJours - 1) * JOUR_MS);
+}
+
+/** Heures de prise d'un traitement. */
+function heuresDe(t, reglages) {
+  if (t.heures && t.heures.length) return [...t.heures].sort();
+  return MOMENTS.filter((m) => (t.moments || []).includes(m)).map((m) => reglages.heures[m]);
+}
+
+/** Liste triée des prises programmées pour une date. */
+function prisesDuJour(iso, traitements, reglages) {
+  const liste = [];
+  for (const t of traitements) {
+    if (t.siBesoin || !estActif(t, iso)) continue;
+    for (const h of heuresDe(t, reglages)) {
+      const moment = Object.entries(reglages.heures).find(([, v]) => v === h)?.[0] || null;
+      liste.push({ heure: h, moment, t });
+    }
+  }
+  return liste.sort((a, b) => a.heure.localeCompare(b.heure));
+}
+
+function libelleMoment(m) {
+  return { matin: "Matin", midi: "Midi", soir: "Soir", coucher: "Coucher" }[m] || "";
+}
+
+function libelleQuantite(t) {
+  const q = t.quantite ?? 1;
+  const qs = q === 0.5 ? "½" : String(q).replace(".", ",");
+  const u = t.unite || "prise";
+  return `${qs} ${u}${q > 1 && !/s$/.test(u) ? "s" : ""}`;
+}
+
+function resumePosologie(t, reglages) {
+  const parts = [libelleQuantite(t)];
+  if (t.siBesoin) parts.push("si besoin");
+  else if (t.heures?.length) parts.push("à " + t.heures.join(", "));
+  else parts.push((t.moments || []).map(libelleMoment).join(" · ").toLowerCase());
+  if (t.hebdomadaire) parts.push("1 fois/semaine");
+  if (t.dureeJours) parts.push(`pendant ${t.dureeJours} j`);
+  else parts.push("au long cours");
+  return parts.join(" — ");
+}
+
+// ── js/alarmes.js ──
+// Alarmes de prise.
+// 1) Notifications du navigateur programmées tant que l'application est ouverte
+//    (ou installée et active en arrière-plan selon le système).
+// 2) Export d'un calendrier .ics avec alarmes : solution la plus fiable sur téléphone,
+//    les rappels sont alors gérés par l'agenda du système même application fermée.
+
+
+
+let minuteurs = [];
+
+function notificationsSupportees() {
+  return "Notification" in window;
+}
+
+async function demanderPermission() {
+  if (!notificationsSupportees()) return "unsupported";
+  if (Notification.permission === "granted") return "granted";
+  return Notification.requestPermission();
+}
+
+function bip() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.35, 0.7].forEach((t) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = 880; o.type = "sine";
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.25);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.3);
+    });
+  } catch { /* audio indisponible */ }
+}
+
+async function notifier(titre, corps, tag) {
+  if (etat.reglages.son) bip();
+  if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+  if (!notificationsSupportees() || Notification.permission !== "granted") {
+    alerteInterne(titre, corps);
+    return;
+  }
+  const options = { body: corps, tag, icon: "icons/icon.svg", badge: "icons/icon.svg", requireInteraction: true, renotify: true };
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if (reg) await reg.showNotification(titre, options);
+    else new Notification(titre, options);
+  } catch {
+    new Notification(titre, options);
+  }
+}
+
+function alerteInterne(titre, corps) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = titre + "\n" + corps;
+  el.classList.add("visible");
+  setTimeout(() => el.classList.remove("visible"), 15000);
+}
+
+function aHeure(iso, hhmm) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const [h, mi] = hhmm.split(":").map(Number);
+  return new Date(y, m - 1, d, h, mi, 0);
+}
+
+/** (Re)programme les alarmes des prochaines 24 h. */
+function planifierAlarmes() {
+  minuteurs.forEach(clearTimeout);
+  minuteurs = [];
+  if (!etat.reglages.alarmes) return;
+  const maintenant = Date.now();
+  const demain = new Date(); demain.setDate(demain.getDate() + 1);
+  for (const iso of [aujourdhui(), aujourdhui(demain)]) {
+    // Regroupe les médicaments à prendre à la même heure
+    const parHeure = new Map();
+    for (const p of prisesDuJour(iso, etat.traitements, etat.reglages)) {
+      if (!parHeure.has(p.heure)) parHeure.set(p.heure, []);
+      parHeure.get(p.heure).push(p);
+    }
+    for (const [heure, prises] of parHeure) {
+      const quand = aHeure(iso, heure).getTime();
+      const relance = quand + etat.reglages.rappelMinutes * 60000;
+      const corps = prises.map((p) => `• ${p.t.nom} : ${libelleQuantite(p.t)}`).join("\n");
+      const restantes = () => prises.filter((p) => !etat.prises[clePrise(iso, p.t.id, heure)]);
+      if (quand > maintenant && quand - maintenant < 86400000) {
+        minuteurs.push(setTimeout(() => {
+          if (restantes().length) notifier(`💊 Prise de ${heure}`, corps, `prise-${iso}-${heure}`);
+        }, quand - maintenant));
+      }
+      if (etat.reglages.rappelMinutes > 0 && relance > maintenant && relance - maintenant < 86400000) {
+        minuteurs.push(setTimeout(() => {
+          const r = restantes();
+          if (r.length) notifier(`⏰ Rappel : prise de ${heure} non cochée`, r.map((p) => `• ${p.t.nom}`).join("\n"), `rappel-${iso}-${heure}`);
+        }, relance - maintenant));
+      }
+    }
+  }
+  // Re-planification à minuit passé
+  const minuit = new Date(); minuit.setHours(24, 0, 30, 0);
+  minuteurs.push(setTimeout(planifierAlarmes, minuit - maintenant));
+}
+
+function nombreAlarmesProgrammees() {
+  return minuteurs.length;
+}
+
+// ─────────── Export iCalendar ───────────
+
+function echapper(s) {
+  return String(s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+}
+
+function plier(ligne) {
+  // RFC 5545 : lignes de 75 octets max
+  const out = [];
+  let reste = ligne;
+  while (reste.length > 73) { out.push(reste.slice(0, 73)); reste = " " + reste.slice(73); }
+  out.push(reste);
+  return out.join("\r\n");
+}
+
+function genererICS() {
+  const z = (n) => String(n).padStart(2, "0");
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const lignes = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MedocPlanner//FR", "CALSCALE:GREGORIAN", "X-WR-CALNAME:Mes traitements"];
+  for (const t of etat.traitements) {
+    if (t.siBesoin) continue;
+    const med = t.medId ? trouverParId(t.medId) : null;
+    const conseil = med?.moment || t.ficheIA?.moment || "";
+    // premier jour actif (utile pour les prises hebdomadaires)
+    let debut = new Date(t.debut + "T00:00:00");
+    for (let i = 0; i < 7 && !estActif(t, aujourdhui(debut)); i++) debut.setDate(debut.getDate() + 1);
+    for (const h of heuresDe(t, etat.reglages)) {
+      const [hh, mm] = h.split(":");
+      const dt = `${debut.getFullYear()}${z(debut.getMonth() + 1)}${z(debut.getDate())}T${hh}${mm}00`;
+      let rrule = t.hebdomadaire ? "RRULE:FREQ=WEEKLY" : "RRULE:FREQ=DAILY";
+      if (t.dureeJours) rrule += ";COUNT=" + (t.hebdomadaire ? Math.max(1, Math.ceil(t.dureeJours / 7)) : t.dureeJours);
+      lignes.push(
+        "BEGIN:VEVENT",
+        `UID:${t.id}-${hh}${mm}@medoc-planner`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART:${dt}`,
+        "DURATION:PT10M",
+        rrule,
+        plier(`SUMMARY:${echapper(`💊 ${t.nom} – ${libelleQuantite(t)}`)}`),
+        plier(`DESCRIPTION:${echapper([conseil, ...(t.remarques || [])].filter(Boolean).join("\n"))}`),
+        "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${echapper("Prendre " + t.nom)}`, "TRIGGER:PT0M", "END:VALARM",
+        "END:VEVENT",
+      );
+    }
+  }
+  lignes.push("END:VCALENDAR");
+  return lignes.join("\r\n");
+}
+
+function telechargerICS() {
+  const blob = new Blob([genererICS()], { type: "text/calendar;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "mes-traitements.ics";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+/** Horaires distincts des prises du jour, avec les médicaments concernés (pour régler des alarmes). */
+function horairesAlarmes() {
+  const parHeure = new Map();
+  for (const p of prisesDuJour(aujourdhui(), etat.traitements, etat.reglages)) {
+    if (!parHeure.has(p.heure)) parHeure.set(p.heure, []);
+    parHeure.get(p.heure).push(p.t.nom);
+  }
+  return [...parHeure].map(([heure, noms]) => ({ heure, noms }));
+}
+
+// ── js/ocr.js ──
+// Lecture de l'ordonnance à partir d'une photo.
+//  - Mode local : OCR Tesseract.js (gratuit, dans le navigateur, adapté aux ordonnances imprimées)
+//  - Mode IA (optionnel) : Claude (vision) avec la clé API de l'utilisateur, bien plus fiable,
+//    y compris sur les ordonnances manuscrites.
+
+
+const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+const ANTHROPIC_SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.3.0/+esm";
+const MODELE_CLAUDE = "claude-opus-5-5";
+
+/** Redimensionne l'image et la renvoie en JPEG (dataURL + base64). */
+async function preparerImage(fichier, maxCote = 1800) {
+  const url = URL.createObjectURL(fichier);
+  try {
+    const img = await new Promise((ok, ko) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => ko(new Error("Image illisible"));
+      i.src = url;
+    });
+    const ratio = Math.min(1, maxCote / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * ratio);
+    c.height = Math.round(img.height * ratio);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    const dataUrl = c.toDataURL("image/jpeg", 0.88);
+    const blob = await new Promise((ok) => c.toBlob(ok, "image/jpeg", 0.88));
+    return { dataUrl, base64: dataUrl.split(",")[1], canvas: c, blob };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function chargerScript(src) {
+  return new Promise((ok, ko) => {
+    if (document.querySelector(`script[src="${src}"]`)) return ok();
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = ok;
+    s.onerror = () => ko(new Error("Impossible de charger " + src + " (connexion internet requise)"));
+    document.head.appendChild(s);
+  });
+}
+
+/** OCR local, renvoie le texte brut. */
+async function ocrLocal(canvas, onProgres = () => {}) {
+  await chargerScript(TESSERACT_URL);
+  // Pré-traitement : niveaux de gris + contraste
+  const c = document.createElement("canvas");
+  c.width = canvas.width; c.height = canvas.height;
+  const ctx = c.getContext("2d");
+  ctx.filter = "grayscale(1) contrast(1.4)";
+  ctx.drawImage(canvas, 0, 0);
+  const { data } = await window.Tesseract.recognize(c, "fra", {
+    logger: (m) => { if (m.status === "recognizing text") onProgres(Math.round(m.progress * 100)); },
+  });
+  return data.text;
+}
+
+// ─────────────── Claude (optionnel) ───────────────
+
+let clientCache = null;
+async function client(cle) {
+  if (clientCache && clientCache.cle === cle) return clientCache.client;
+  const { default: Anthropic } = await import(ANTHROPIC_SDK_URL);
+  // La clé reste sur l'appareil de l'utilisateur ; l'appel est fait directement depuis le navigateur.
+  const c = new Anthropic({ apiKey: cle, dangerouslyAllowBrowser: true });
+  clientCache = { cle, client: c };
+  return c;
+}
+
+async function appelAPI(cle, contenu, schema, systeme) {
+  const c = await client(cle);
+  const reponse = await c.beta.messages.create({
+    model: MODELE_CLAUDE,
+    max_tokens: 16000,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "medium", format: { type: "json_schema", schema } },
+    system: systeme,
+    messages: [{ role: "user", content: contenu }],
+  });
+  if (reponse.stop_reason === "refusal") throw new Error("Claude a refusé de traiter cette demande.");
+  if (reponse.stop_reason === "max_tokens") throw new Error("Réponse tronquée, réessayez.");
+  const texte = reponse.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+  return JSON.parse(texte);
+}
+
+// IA intégrée de claude.ai (aucune clé nécessaire)
+async function appelIntegre({ consigne, systeme, schema, image, niveau = "default" }) {
+  const sample = await capacite("sample");
+  const prompt = `${systeme}\n\n${consigne}\n\nRéponds uniquement avec un objet JSON conforme à ce schéma JSON (tous les champs requis) :\n${JSON.stringify(schema)}`;
+  try {
+    return await sample.json(prompt, { modelTier: niveau, ...(image ? { images: [image] } : {}), cache: false });
+  } catch (e) {
+    const messages = {
+      not_granted: "Autorisez l'accès à Claude pour cette page (menu Permissions de la page).",
+      rate_limited: "Trop de demandes rapprochées : patientez une minute puis réessayez.",
+      invalid_json: "La réponse de l'IA n'a pas pu être lue. Réessayez avec une photo plus nette.",
+      image_rejected: "Image refusée : utilisez une photo JPEG ou PNG.",
+    };
+    throw new Error(messages[e?.code] || e?.message || "Erreur de l'IA");
+  }
+}
+
+/** Quel moteur d'IA est disponible ? "integree" (claude.ai), "cle" (clé API) ou null. */
+async function moteurIA(cle) {
+  if (await capacite("sample")) return "integree";
+  if (cle) return "cle";
+  return null;
+}
+
+async function demander({ cle, consigne, systeme, schema, image, imageBase64, niveau }) {
+  const moteur = await moteurIA(cle);
+  if (moteur === "integree") {
+    if (image && !(await iaIntegreeImages())) throw new Error("La lecture d'images n'est pas disponible dans cette vue.");
+    return appelIntegre({ consigne, systeme, schema, image, niveau });
+  }
+  if (moteur === "cle") {
+    const contenu = [];
+    if (imageBase64) contenu.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: imageBase64 } });
+    contenu.push({ type: "text", text: consigne });
+    return appelAPI(cle, contenu, schema, systeme);
+  }
+  throw new Error("Aucune IA configurée.");
+}
+
+const SCHEMA_ORDONNANCE = {
+  type: "object",
+  additionalProperties: false,
+  required: ["medicaments", "prescripteur", "date"],
+  properties: {
+    prescripteur: { type: "string", description: "Nom du médecin si lisible, sinon chaîne vide" },
+    date: { type: "string", description: "Date de l'ordonnance au format AAAA-MM-JJ si lisible, sinon chaîne vide" },
+    medicaments: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["nom", "dci", "dosage", "quantite", "unite", "moments", "heures", "siBesoin", "dureeJours", "hebdomadaire", "remarques", "texteSource"],
+        properties: {
+          nom: { type: "string", description: "Nom tel qu'écrit (commercial ou DCI)" },
+          dci: { type: "string", description: "DCI (molécule) en français" },
+          dosage: { type: "string", description: "ex. '500 mg'" },
+          quantite: { type: "number", description: "Quantité par prise" },
+          unite: { type: "string", description: "comprimé, gélule, sachet, bouffée…" },
+          moments: { type: "array", items: { type: "string", enum: ["matin", "midi", "soir", "coucher"] } },
+          heures: { type: "array", items: { type: "string" }, description: "Heures HH:MM si posologie en intervalle (toutes les X heures), sinon vide" },
+          siBesoin: { type: "boolean" },
+          dureeJours: { type: ["integer", "null"], description: "Durée en jours, null si traitement au long cours ou non précisé" },
+          hebdomadaire: { type: "boolean", description: "Vrai si une prise par semaine" },
+          remarques: { type: "array", items: { type: "string" } },
+          texteSource: { type: "string", description: "Ligne(s) de l'ordonnance correspondante(s)" },
+        },
+      },
+    },
+  },
+};
+
+async function lireOrdonnanceIA(cle, photo) {
+  const r = await demander({
+    cle, image: photo.blob, imageBase64: photo.base64, niveau: "complex",
+    systeme: "Tu es un assistant de lecture d'ordonnances pour une application d'aide à l'observance. Tu transcris fidèlement ; tu ne poses pas de diagnostic.",
+    consigne: "Voici la photo d'une ordonnance médicale française. Extrais chaque médicament prescrit avec sa posologie. Si un élément est illisible ou incertain, indique-le dans 'remarques' plutôt que de deviner. N'invente aucun médicament. Si l'image n'est pas une ordonnance, renvoie une liste vide.",
+    schema: SCHEMA_ORDONNANCE,
+  });
+  if (!Array.isArray(r?.medicaments)) throw new Error("Réponse inattendue de l'IA.");
+  return r;
+}
+
+const SCHEMA_FICHE = {
+  type: "object",
+  additionalProperties: false,
+  required: ["dci", "famille", "indications", "effets", "conseils", "moment"],
+  properties: {
+    dci: { type: "string" },
+    famille: { type: "string" },
+    indications: { type: "array", items: { type: "string" } },
+    effets: { type: "array", items: { type: "string" } },
+    conseils: { type: "array", items: { type: "string" } },
+    moment: { type: "string", description: "Moment de prise conseillé par rapport aux repas" },
+  },
+};
+
+async function genererFicheIA(cle, nom) {
+  const f = await demander({ cle, schema: SCHEMA_FICHE,
+    systeme: "Tu es pharmacien et tu rédiges des fiches d'information patient fiables et concises.",
+    consigne: `Rédige une fiche patient synthétique, en français simple, pour le médicament « ${nom} » (tel que commercialisé en France) : famille thérapeutique, principales indications, 3 à 6 effets indésirables principaux, conseils de prise pratiques. Si le médicament t'est inconnu, indique-le dans 'famille' et laisse les listes vides.` });
+  for (const k of ["indications", "effets", "conseils"]) if (!Array.isArray(f[k])) f[k] = [];
+  return f;
+}
+
+const SCHEMA_INTERACTIONS = {
+  type: "object",
+  additionalProperties: false,
+  required: ["interactions"],
+  properties: {
+    interactions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["a", "b", "niveau", "risque", "conduite"],
+        properties: {
+          a: { type: "string" }, b: { type: "string" },
+          niveau: { type: "string", enum: ["CI", "AD", "PE", "APEC"] },
+          risque: { type: "string" }, conduite: { type: "string" },
+        },
+      },
+    },
+  },
+};
+
+async function analyserInteractionsIA(cle, noms) {
+  const r = await demander({ cle, schema: SCHEMA_INTERACTIONS,
+    systeme: "Tu es pharmacien clinicien. Tu es précis et tu n'inventes pas d'interactions.",
+    consigne: `Liste de traitements d'un patient : ${noms.join(" ; ")}.\nIdentifie les interactions médicamenteuses cliniquement pertinentes selon le Thésaurus ANSM (niveaux CI, AD, PE, APEC) et les doublons thérapeutiques. Ne liste que des interactions réelles et documentées.` });
+  return (r?.interactions || []).filter((i) => ["CI", "AD", "PE", "APEC"].includes(i.niveau));
+}
+
+// ── js/app.js ──
+
+
+
+
+
+
+
+
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+
+let vue = "planning";
+let dateVue = aujourdhui();
+let brouillon = []; // médicaments détectés en attente de validation
+let photo = null;
+let interactionsIA = null;
+let moteur = null;        // "integree" | "cle" | null
+let lectureImageIA = false;
+
+async function majMoteurIA() {
+  moteur = await moteurIA(etat.reglages.cleApi);
+  lectureImageIA = moteur === "cle" || (moteur === "integree" && await iaIntegreeImages());
+}
+
+// ─────────────────────── Navigation ───────────────────────
+function allerA(v) {
+  vue = v;
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("actif", b.dataset.vue === v));
+  rendre();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => allerA(b.dataset.vue)));
+
+function rendre() {
+  const main = $("#contenu");
+  main.innerHTML = { ordonnance: vueOrdonnance, planning: vuePlanning, fiches: vueFiches, interactions: vueInteractions, reglages: vueReglages }[vue]();
+  const badge = $("#badge-interactions");
+  const n = analyserInteractions(itemsInteractions()).filter((i) => NIVEAUX[i.niveau].rang >= 3).length;
+  badge.textContent = n || "";
+  badge.hidden = !n;
+}
+
+// ─────────────────────── Vue : ordonnance ───────────────────────
+function vueOrdonnance() {
+  const ia = lectureImageIA;
+  const ocrLocalPossible = !estClaude; // Tesseract télécharge ses modèles : impossible dans une page claude.ai
+  return `
+  <section class="carte">
+    <h2>📷 Scanner une ordonnance</h2>
+    <p class="aide">Prenez l'ordonnance en photo bien à plat, éclairée, cadrée sur la liste des médicaments.</p>
+    <label class="bouton principal large">
+      <input type="file" accept="image/*" capture="environment" id="photo" hidden>
+      Prendre / choisir une photo
+    </label>
+    ${photo ? `<img src="${photo.dataUrl}" class="apercu" alt="Ordonnance">` : ""}
+    ${photo ? `
+      <div class="ligne-boutons">
+        ${ia ? `<button class="bouton principal" data-action="analyser-ia">✨ Lire l'ordonnance avec l'IA</button>` : ""}
+        ${ocrLocalPossible ? `<button class="bouton ${ia ? "" : "principal"}" data-action="analyser-local">Lire (OCR local)</button>` : ""}
+      </div>
+      <p class="aide">${ia ? "L'IA lit aussi les ordonnances manuscrites." + (moteur === "integree" ? " La première fois, claude.ai vous demande d'autoriser la page à utiliser Claude." : "") :
+        ocrLocalPossible ? "L'OCR local fonctionne bien sur les ordonnances imprimées. Pour les ordonnances manuscrites, configurez la lecture IA dans l'onglet Alarmes." :
+        "La lecture d'image n'est pas disponible ici : saisissez le texte de l'ordonnance ci-dessous."}</p>` : ""}
+    <div id="progression"></div>
+  </section>
+
+  <details class="carte">
+    <summary>⌨️ Saisir ou coller le texte de l'ordonnance</summary>
+    <textarea id="texte-ordo" rows="6" placeholder="Ex. :&#10;Doliprane 1000 mg : 1 comprimé 3 fois par jour si douleur pendant 5 jours&#10;Amoxicilline 1 g : 1 cp matin et soir pendant 6 jours"></textarea>
+    <button class="bouton principal" data-action="analyser-texte">Analyser le texte</button>
+  </details>
+
+  ${brouillon.length ? vueBrouillon() : ""}
+
+  <section class="carte">
+    <button class="bouton large" data-action="nouveau">➕ Ajouter un médicament manuellement</button>
+  </section>`;
+}
+
+function vueBrouillon() {
+  return `
+  <section class="carte surligne">
+    <h2>Médicaments détectés (${brouillon.length})</h2>
+    <p class="aide">Vérifiez attentivement chaque ligne avec l'ordonnance originale et corrigez si besoin avant de valider.</p>
+    <ul class="liste">
+      ${brouillon.map((t, i) => `
+        <li>
+          <div class="ligne-titre">
+            <strong>${esc(t.nom)}</strong>
+            ${t.certitude === "moyenne" ? '<span class="pastille caution">à vérifier</span>' : ""}
+            ${!t.medId ? '<span class="pastille info">hors base</span>' : ""}
+          </div>
+          <div class="sous">${esc(resumePosologie(t, etat.reglages))}</div>
+          ${t.texteSource ? `<div class="source">« ${esc(t.texteSource)} »</div>` : ""}
+          ${t.remarques?.length ? `<div class="sous">📝 ${esc(t.remarques.join(" · "))}</div>` : ""}
+          <div class="ligne-boutons petit">
+            <button class="bouton" data-action="editer-brouillon" data-i="${i}">Modifier</button>
+            <button class="bouton" data-action="retirer-brouillon" data-i="${i}">Retirer</button>
+          </div>
+        </li>`).join("")}
+    </ul>
+    <button class="bouton principal large" data-action="valider-brouillon">✅ Ajouter au planning</button>
+  </section>`;
+}
+
+async function analyserPhoto(mode) {
+  const prog = $("#progression");
+  try {
+    if (mode === "ia") {
+      prog.innerHTML = `<div class="chargement">Lecture par l'IA en cours…</div>`;
+      const r = await lireOrdonnanceIA(etat.reglages.cleApi, photo);
+      if (!r.medicaments.length) {
+        prog.innerHTML = `<div class="alerte warning">Aucun médicament trouvé sur cette photo. Essayez une photo plus nette, bien éclairée et cadrée sur l'ordonnance.</div>`;
+        return;
+      }
+      brouillon = r.medicaments.map((m) => {
+        const det = detecterMedicament(m.dci + " " + m.nom);
+        return {
+          nom: [m.nom, m.dosage && !String(m.nom).includes(m.dosage) ? m.dosage : ""].filter(Boolean).join(" "),
+          medId: det?.med.id || null,
+          dosage: m.dosage, quantite: m.quantite || 1, unite: m.unite || "prise",
+          moments: (m.moments || []).filter((x) => MOMENTS.includes(x)),
+          heures: (m.heures || []).filter((h) => /^\d{2}:\d{2}$/.test(h)), siBesoin: !!m.siBesoin,
+          dureeJours: m.dureeJours, hebdomadaire: m.hebdomadaire,
+          remarques: m.remarques || [], texteSource: m.texteSource, certitude: "haute",
+          debut: aujourdhui(),
+        };
+      });
+    } else {
+      prog.innerHTML = `<div class="chargement">Lecture du texte… <span id="pct">0</span>%</div>`;
+      const texte = await ocrLocal(photo.canvas, (p) => { const el = $("#pct"); if (el) el.textContent = p; });
+      brouillon = analyserOrdonnance(texte);
+      if (!brouillon.length) {
+        prog.innerHTML = `<div class="alerte warning">Aucun médicament reconnu. Texte lu :<pre>${esc(texte)}</pre>Vous pouvez corriger ce texte dans la zone « Saisir le texte », ou ajouter les médicaments manuellement.</div>`;
+        $("#texte-ordo").value = texte;
+        return;
+      }
+    }
+    rendre();
+  } catch (e) {
+    console.error(e);
+    prog.innerHTML = `<div class="alerte danger">Erreur : ${esc(e.message)}</div>`;
+  }
+}
+
+// ─────────────────────── Vue : planning ───────────────────────
+function vuePlanning() {
+  const prises = prisesDuJour(dateVue, etat.traitements, etat.reglages);
+  const d = new Date(dateVue + "T12:00:00");
+  const estAujourdhui = dateVue === aujourdhui();
+  const faites = prises.filter((p) => etat.prises[clePrise(dateVue, p.t.id, p.heure)]).length;
+  const siBesoin = etat.traitements.filter((t) => t.siBesoin && estActif(t, dateVue));
+
+  // regroupement par heure
+  const groupes = new Map();
+  for (const p of prises) {
+    if (!groupes.has(p.heure)) groupes.set(p.heure, []);
+    groupes.get(p.heure).push(p);
+  }
+  const maintenant = new Date().toTimeString().slice(0, 5);
+
+  return `
+  <section class="carte">
+    <div class="nav-date">
+      <button class="bouton rond" data-action="jour" data-delta="-1" aria-label="Jour précédent">‹</button>
+      <div>
+        <div class="jour">${estAujourdhui ? "Aujourd'hui" : JOURS[d.getDay()]}</div>
+        <div class="sous">${d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
+      </div>
+      <button class="bouton rond" data-action="jour" data-delta="1" aria-label="Jour suivant">›</button>
+    </div>
+    ${prises.length ? `
+      <div class="progression-jour"><div style="width:${Math.round((faites / prises.length) * 100)}%"></div></div>
+      <p class="sous centre">${faites} / ${prises.length} prise${prises.length > 1 ? "s" : ""} effectuée${faites > 1 ? "s" : ""}</p>` : ""}
+  </section>
+
+  ${!etat.traitements.length ? `
+    <section class="carte vide">
+      <p>Aucun traitement enregistré.</p>
+      <button class="bouton principal" data-action="aller" data-vue="ordonnance">📷 Scanner une ordonnance</button>
+    </section>` : ""}
+
+  ${[...groupes].map(([heure, liste]) => {
+    const toutFait = liste.every((p) => etat.prises[clePrise(dateVue, p.t.id, heure)]);
+    const enRetard = estAujourdhui && !toutFait && heure < maintenant;
+    return `
+    <section class="carte creneau ${toutFait ? "fait" : ""} ${enRetard ? "retard" : ""}">
+      <div class="creneau-tete">
+        <span class="heure">${heure}</span>
+        <span class="sous">${liste[0].moment ? libelleMoment(liste[0].moment) : ""}${enRetard ? " · en retard" : ""}</span>
+      </div>
+      <ul class="liste">
+        ${liste.map((p) => {
+          const pris = etat.prises[clePrise(dateVue, p.t.id, heure)];
+          const med = p.t.medId ? trouverParId(p.t.medId) : null;
+          const conseil = med?.moment || p.t.ficheIA?.moment || "";
+          return `
+          <li class="prise ${pris ? "prise-ok" : ""}">
+            <label>
+              <input type="checkbox" data-action="cocher" data-id="${p.t.id}" data-heure="${heure}" ${pris ? "checked" : ""}>
+              <span>
+                <strong>${esc(p.t.nom)}</strong>
+                <span class="sous">${esc(libelleQuantite(p.t))}${conseil ? " · " + esc(conseil) : ""}</span>
+                ${pris ? `<span class="sous ok">✓ pris à ${new Date(pris).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>` : ""}
+              </span>
+            </label>
+          </li>`;
+        }).join("")}
+      </ul>
+    </section>`;
+  }).join("")}
+
+  ${siBesoin.length ? `
+    <section class="carte">
+      <h3>Si besoin</h3>
+      <ul class="liste">${siBesoin.map((t) => `<li><strong>${esc(t.nom)}</strong><div class="sous">${esc(resumePosologie(t, etat.reglages))}</div></li>`).join("")}</ul>
+    </section>` : ""}
+
+  ${etat.traitements.length ? `
+    <section class="carte">
+      <h3>Mes traitements</h3>
+      <ul class="liste">
+        ${etat.traitements.map((t) => {
+          const fin = dateFin(t);
+          const termine = fin && fin < new Date(aujourdhui() + "T00:00:00");
+          return `
+          <li class="${termine ? "termine" : ""}">
+            <div class="ligne-titre"><strong>${esc(t.nom)}</strong>${termine ? '<span class="pastille">terminé</span>' : ""}</div>
+            <div class="sous">${esc(resumePosologie(t, etat.reglages))}</div>
+            <div class="sous">Depuis le ${new Date(t.debut + "T12:00:00").toLocaleDateString("fr-FR")}${fin ? " jusqu'au " + fin.toLocaleDateString("fr-FR") : ""}</div>
+            <div class="ligne-boutons petit">
+              <button class="bouton" data-action="editer" data-id="${t.id}">Modifier</button>
+              <button class="bouton" data-action="supprimer" data-id="${t.id}">Supprimer</button>
+            </div>
+          </li>`;
+        }).join("")}
+      </ul>
+      <button class="bouton large" data-action="nouveau">➕ Ajouter un médicament</button>
+    </section>` : ""}`;
+}
+
+// ─────────────────────── Vue : fiches ───────────────────────
+function vueFiches() {
+  if (!etat.traitements.length) return `<section class="carte vide"><p>Ajoutez des traitements pour voir leurs fiches.</p></section>`;
+  return `
+  <section class="carte no-print">
+    <h2>📘 Fiches de mes traitements</h2>
+    <p class="aide">Synthèse indicative. Lisez toujours la notice et demandez conseil à votre pharmacien.</p>
+    ${estClaude ? "" : `<button class="bouton" data-action="imprimer">🖨️ Imprimer / PDF</button>`}
+  </section>
+  <h1 class="print-only">Mes traitements — ${new Date().toLocaleDateString("fr-FR")}</h1>
+  ${etat.traitements.map((t) => {
+    const f = t.medId ? trouverParId(t.medId) : t.ficheIA;
+    return `
+    <article class="carte fiche">
+      <h3>${esc(t.nom)}</h3>
+      ${f ? `
+        <div class="famille">${esc(f.dci)} — ${esc(f.famille)}</div>
+        <div class="poso">🗓️ <strong>Ma posologie :</strong> ${esc(resumePosologie(t, etat.reglages))}</div>
+        <div class="grille-fiche">
+          <div><h4>🎯 Indications</h4><ul>${f.indications.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>
+          <div><h4>⚠️ Effets indésirables principaux</h4><ul>${f.effets.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>
+          <div class="pleine"><h4>💡 Conseils de prise</h4>
+            <p class="moment">⏱️ ${esc(f.moment)}</p>
+            <ul>${f.conseils.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+          </div>
+        </div>
+        ${t.ficheIA && !t.medId ? `<p class="aide">Fiche générée par IA — à vérifier avec votre pharmacien.</p>` : ""}` : `
+        <p class="aide">Ce médicament n'est pas dans la base locale.</p>
+        ${moteur ? `<button class="bouton principal no-print" data-action="fiche-ia" data-id="${t.id}">✨ Générer la fiche avec l'IA</button>` :
+          `<p class="aide">Vous pouvez l'associer à un médicament de la base (bouton Modifier dans le planning) ou configurer l'IA dans l'onglet Alarmes.</p>`}`}
+    </article>`;
+  }).join("")}`;
+}
+
+// ─────────────────────── Vue : interactions ───────────────────────
+function itemsInteractions() {
+  return etat.traitements
+    .filter((t) => { const f = dateFin(t); return !f || f >= new Date(aujourdhui() + "T00:00:00"); })
+    .map((t) => ({ nom: t.nom, med: t.medId ? trouverParId(t.medId) : null }));
+}
+
+function carteInteraction(i) {
+  const n = NIVEAUX[i.niveau];
+  return `
+  <li class="interaction ${n.couleur}">
+    <div class="ligne-titre"><span class="pastille ${n.couleur}">${n.libelle}</span></div>
+    <strong>${esc(i.a)}</strong> + <strong>${esc(i.b)}</strong>
+    <p>${esc(i.risque)}</p>
+    <p class="conduite">👉 ${esc(i.conduite)}</p>
+  </li>`;
+}
+
+function vueInteractions() {
+  const items = itemsInteractions();
+  const res = analyserInteractions(items);
+  const horsBase = items.filter((i) => !i.med);
+  return `
+  <section class="carte">
+    <h2>⚖️ Interactions médicamenteuses</h2>
+    <p class="aide">Analyse des ${items.length} traitement(s) en cours selon les niveaux du Thésaurus ANSM.</p>
+    <div class="legende">${Object.values(NIVEAUX).map((n) => `<span class="pastille ${n.couleur}">${n.libelle}</span>`).join(" ")}</div>
+  </section>
+  ${items.length < 2 ? `<section class="carte vide"><p>Il faut au moins deux traitements pour rechercher des interactions.</p></section>` :
+    res.length ? `<section class="carte"><ul class="liste">${res.map(carteInteraction).join("")}</ul></section>` :
+    `<section class="carte"><div class="alerte ok">✅ Aucune interaction connue détectée dans la base locale entre ces traitements.</div></section>`}
+  ${horsBase.length ? `<section class="carte"><div class="alerte info">Non vérifiés (hors base locale) : ${horsBase.map((i) => esc(i.nom)).join(", ")}.</div></section>` : ""}
+  ${items.length >= 2 && moteur ? `
+    <section class="carte">
+      <button class="bouton large" data-action="interactions-ia">✨ Analyse complémentaire par l'IA</button>
+      <div id="res-ia">${interactionsIA ? (interactionsIA.length ? `<ul class="liste">${interactionsIA.map(carteInteraction).join("")}</ul>` : `<div class="alerte ok">L'IA n'a pas relevé d'interaction supplémentaire.</div>`) : ""}</div>
+    </section>` : ""}
+  <section class="carte"><p class="aide">⚠️ Cette vérification ne couvre pas tous les médicaments ni l'automédication, les plantes ou l'alimentation. Signalez toujours l'ensemble de vos traitements à votre médecin et pharmacien.</p></section>`;
+}
+
+// ─────────────────────── Vue : réglages / alarmes ───────────────────────
+function vueReglages() {
+  const r = etat.reglages;
+  const perm = notificationsSupportees() ? Notification.permission : "unsupported";
+  const horaires = horairesAlarmes();
+  return `
+  <section class="carte">
+    <h2>⏰ Rappels de prise</h2>
+    <label class="interrupteur"><input type="checkbox" id="opt-alarmes" data-action="alarmes" ${r.alarmes ? "checked" : ""}> Activer les rappels de prise</label>
+    ${estClaude ? `<p class="sous">Dans cette version, le rappel sonne et s'affiche quand la page est ouverte${r.alarmes ? ` · ${nombreAlarmesProgrammees()} rappel(s) programmé(s)` : ""}.</p>` :
+      `<p class="sous">Notifications : ${{ granted: "autorisées ✅", denied: "bloquées ❌ (à autoriser dans les paramètres du navigateur)", default: "non demandées", unsupported: "non supportées par ce navigateur" }[perm]}${r.alarmes ? ` · ${nombreAlarmesProgrammees()} rappel(s) programmé(s)` : ""}</p>`}
+    <label class="interrupteur"><input type="checkbox" id="opt-son" data-action="son" ${r.son ? "checked" : ""}> Son et vibration</label>
+    <label>Relance si non coché après
+      <select id="opt-rappel" data-action="rappel">${[0, 10, 15, 30, 60].map((m) => `<option value="${m}" ${r.rappelMinutes === m ? "selected" : ""}>${m ? m + " min" : "pas de relance"}</option>`).join("")}</select>
+    </label>
+    <div class="ligne-boutons">
+      <button class="bouton" data-action="tester">🔔 Tester le rappel</button>
+      ${estClaude ? "" : `<button class="bouton principal" data-action="ics">📅 Exporter vers l'agenda (.ics)</button>`}
+    </div>
+  </section>
+
+  <section class="carte">
+    <h2>📱 Alarmes du téléphone</h2>
+    <p class="aide">Pour être prévenu même téléphone verrouillé et application fermée, créez ces alarmes quotidiennes dans l'application Horloge${estClaude ? "" : " ou importez le fichier agenda ci-dessus"}.</p>
+    ${horaires.length ? `<ul class="liste">${horaires.map((h) => `
+      <li><div class="ligne-titre"><span class="heure">${h.heure}</span></div><div class="sous">${esc(h.noms.join(" · "))}</div></li>`).join("")}</ul>
+      <button class="bouton" data-action="copier-horaires">📋 Copier la liste</button>` :
+      `<p class="sous">Aucune prise programmée aujourd'hui.</p>`}
+  </section>
+
+  <section class="carte">
+    <h2>🕗 Horaires des moments de prise</h2>
+    <div class="grille-heures">
+      ${MOMENTS.map((m) => `<label>${libelleMoment(m)}<input type="time" id="heure-${m}" data-action="heure" data-moment="${m}" value="${r.heures[m]}"></label>`).join("")}
+    </div>
+  </section>
+
+  ${estClaude ? `
+  <section class="carte">
+    <h2>✨ Lecture par IA</h2>
+    <p class="aide">${lectureImageIA ? "Active : la page utilise Claude via votre compte claude.ai, sans clé API." : "L'IA intégrée n'est pas disponible dans cette vue."}</p>
+  </section>` : `
+  <section class="carte">
+    <h2>✨ Lecture par IA (optionnel)</h2>
+    <p class="aide">Avec une clé API Anthropic (Claude), la photo est envoyée à l'API pour une lecture fiable, y compris des ordonnances manuscrites, et pour générer les fiches des médicaments absents de la base. La clé est stockée uniquement sur cet appareil.</p>
+    <input type="password" id="cle-api" placeholder="sk-ant-…" value="${esc(r.cleApi)}" autocomplete="off">
+    <button class="bouton" data-action="sauver-cle">Enregistrer la clé</button>
+  </section>`}
+
+  <section class="carte">
+    <h2>🔒 Données</h2>
+    <p class="aide">${compteConnecte() ? "Vos données sont sauvegardées de façon privée sur votre compte claude.ai (personne d'autre n'y a accès) et sur cet appareil." :
+      "Toutes vos données restent dans ce navigateur. Aucune donnée n'est envoyée, sauf la photo lors d'une lecture par IA."}</p>
+    <div class="ligne-boutons">
+      <button class="bouton" data-action="exporter">Sauvegarder (JSON)</button>
+      <label class="bouton">Restaurer<input type="file" accept="application/json" id="import" hidden></label>
+      <button class="bouton danger" data-action="effacer">Tout effacer</button>
+    </div>
+  </section>
+
+  <section class="carte"><p class="aide">Base locale : ${MEDICAMENTS.length} médicaments courants. Cette application est une aide à l'organisation et ne remplace pas l'avis d'un professionnel de santé.</p></section>`;
+}
+
+// ─────────────────────── Formulaire traitement ───────────────────────
+function ouvrirFormulaire(t, onValider) {
+  const dlg = $("#dialogue");
+  const v = { nom: "", medId: null, dosage: "", quantite: 1, unite: "comprimé", moments: ["matin"], heures: [], siBesoin: false,
+    dureeJours: null, hebdomadaire: false, debut: aujourdhui(), remarques: [], ...t };
+  dlg.innerHTML = `
+  <form method="dialog" id="form-t">
+    <h2>${t?.nom ? "Modifier" : "Ajouter"} un médicament</h2>
+    <label>Nom (tel qu'indiqué sur l'ordonnance)
+      <input name="nom" required value="${esc(v.nom)}" list="liste-meds" autocomplete="off">
+    </label>
+    <datalist id="liste-meds">${MEDICAMENTS.map((m) => `<option value="${esc(m.dci)}">`).join("")}</datalist>
+    <label>Correspond à (base de données)
+      <select name="medId">
+        <option value="">— non trouvé / autre —</option>
+        ${[...MEDICAMENTS].sort((a, b) => a.dci.localeCompare(b.dci)).map((m) => `<option value="${m.id}" ${v.medId === m.id ? "selected" : ""}>${esc(m.dci)}</option>`).join("")}
+      </select>
+    </label>
+    <div class="deux-col">
+      <label>Quantité par prise<input name="quantite" type="number" step="0.25" min="0.25" value="${v.quantite}"></label>
+      <label>Forme<input name="unite" value="${esc(v.unite)}" list="liste-unites"></label>
+    </div>
+    <datalist id="liste-unites">${["comprimé", "gélule", "sachet", "cuillère", "bouffée", "goutte", "ampoule", "injection", "application", "suppositoire"].map((u) => `<option value="${u}">`).join("")}</datalist>
+    <fieldset>
+      <legend>Moments de prise</legend>
+      ${MOMENTS.map((m) => `<label class="case"><input type="checkbox" name="moment" value="${m}" ${v.moments?.includes(m) ? "checked" : ""}> ${libelleMoment(m)} (${etat.reglages.heures[m]})</label>`).join("")}
+      <label>ou heures précises (ex. 06:00, 14:00, 22:00)<input name="heures" value="${esc((v.heures || []).join(", "))}" placeholder="laisser vide pour utiliser les moments"></label>
+      <label class="case"><input type="checkbox" name="siBesoin" ${v.siBesoin ? "checked" : ""}> Uniquement si besoin (pas d'alarme)</label>
+      <label class="case"><input type="checkbox" name="hebdomadaire" ${v.hebdomadaire ? "checked" : ""}> Une fois par semaine (le même jour que la date de début)</label>
+    </fieldset>
+    <div class="deux-col">
+      <label>Début<input name="debut" type="date" value="${v.debut}"></label>
+      <label>Durée (jours)<input name="dureeJours" type="number" min="1" value="${v.dureeJours ?? ""}" placeholder="long cours"></label>
+    </div>
+    <label>Remarques<input name="remarques" value="${esc((v.remarques || []).join(" · "))}"></label>
+    <div class="ligne-boutons">
+      <button type="button" class="bouton" value="annuler" id="annuler">Annuler</button>
+      <button type="submit" class="bouton principal">Enregistrer</button>
+    </div>
+  </form>`;
+  const form = $("#form-t", dlg);
+  // Association automatique au médicament de la base quand on tape le nom
+  form.nom.addEventListener("change", () => {
+    if (form.medId.value) return;
+    const d = detecterMedicament(form.nom.value);
+    if (d) form.medId.value = d.med.id;
+  });
+  $("#annuler", dlg).onclick = () => dlg.close();
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const heures = String(fd.get("heures") || "").split(/[,;\s]+/).map((h) => h.replace("h", ":").trim())
+      .filter((h) => /^\d{1,2}:\d{2}$/.test(h) || /^\d{1,2}:$/.test(h)).map((h) => {
+        const [a, b] = h.split(":"); return a.padStart(2, "0") + ":" + (b || "00").padStart(2, "0");
+      });
+    const res = {
+      nom: String(fd.get("nom")).trim(),
+      medId: fd.get("medId") || null,
+      quantite: parseFloat(fd.get("quantite")) || 1,
+      unite: String(fd.get("unite") || "prise").trim(),
+      moments: fd.getAll("moment"),
+      heures,
+      siBesoin: fd.get("siBesoin") === "on",
+      hebdomadaire: fd.get("hebdomadaire") === "on",
+      debut: fd.get("debut") || aujourdhui(),
+      dureeJours: parseInt(fd.get("dureeJours"), 10) || null,
+      remarques: String(fd.get("remarques") || "").split("·").map((s) => s.trim()).filter(Boolean),
+    };
+    if (!res.siBesoin && !res.moments.length && !res.heures.length) {
+      informer("Indiquez au moins un moment de prise, des heures, ou cochez « si besoin ».");
+      return;
+    }
+    dlg.close();
+    onValider(res);
+  };
+  dlg.showModal();
+}
+
+// ─────────────────────── Actions ───────────────────────
+document.addEventListener("click", async (e) => {
+  const el = e.target.closest("[data-action]");
+  if (!el || el.tagName === "INPUT" || el.tagName === "SELECT") return;
+  const a = el.dataset.action;
+  switch (a) {
+    case "aller": allerA(el.dataset.vue); break;
+    case "jour": {
+      const d = new Date(dateVue + "T12:00:00");
+      d.setDate(d.getDate() + Number(el.dataset.delta));
+      dateVue = aujourdhui(d); rendre(); break;
+    }
+    case "analyser-local": analyserPhoto("local"); break;
+    case "analyser-ia": analyserPhoto("ia"); break;
+    case "analyser-texte": {
+      const txt = $("#texte-ordo").value;
+      brouillon = analyserOrdonnance(txt);
+      if (!brouillon.length) informer("Aucun médicament de la base reconnu. Ajoutez-les manuellement.");
+      rendre(); break;
+    }
+    case "editer-brouillon": {
+      const i = Number(el.dataset.i);
+      ouvrirFormulaire(brouillon[i], (res) => { brouillon[i] = { ...brouillon[i], ...res, certitude: "haute" }; rendre(); });
+      break;
+    }
+    case "retirer-brouillon": brouillon.splice(Number(el.dataset.i), 1); rendre(); break;
+    case "valider-brouillon":
+      brouillon.forEach(({ certitude, ...t }) => ajouterTraitement({ debut: aujourdhui(), ...t }));
+      brouillon = []; photo = null;
+      allerA("interactions");
+      break;
+    case "nouveau": ouvrirFormulaire(null, (res) => ajouterTraitement(res)); break;
+    case "editer": {
+      const t = etat.traitements.find((x) => x.id === el.dataset.id);
+      ouvrirFormulaire(t, (res) => majTraitement(t.id, res));
+      break;
+    }
+    case "supprimer":
+      if (await confirmer("Supprimer ce traitement et son historique ?", "Supprimer")) supprimerTraitement(el.dataset.id);
+      break;
+    case "fiche-ia": {
+      const t = etat.traitements.find((x) => x.id === el.dataset.id);
+      el.disabled = true; el.textContent = "Génération…";
+      try { majTraitement(t.id, { ficheIA: await genererFicheIA(etat.reglages.cleApi, t.nom) }); }
+      catch (err) { informer("Erreur : " + err.message); rendre(); }
+      break;
+    }
+    case "interactions-ia": {
+      el.disabled = true; el.textContent = "Analyse en cours…";
+      try {
+        const r = await analyserInteractionsIA(etat.reglages.cleApi, itemsInteractions().map((i) => i.nom));
+        interactionsIA = r;
+      } catch (err) { informer("Erreur : " + err.message); }
+      rendre(); break;
+    }
+    case "tester": {
+      const p = estClaude ? "unsupported" : await demanderPermission();
+      notifier("💊 Test de rappel", p === "granted" ? "Les notifications fonctionnent." : "Le rappel s'affiche dans l'application quand elle est ouverte.", "test");
+      break;
+    }
+    case "ics": telechargerICS(); break;
+    case "sauver-cle":
+      etat.reglages.cleApi = $("#cle-api").value.trim();
+      await majMoteurIA(); sauver(); informer("Clé enregistrée sur cet appareil."); break;
+    case "imprimer": window.print(); break;
+    case "copier-horaires": {
+      const txt = horairesAlarmes().map((h) => `${h.heure} : ${h.noms.join(", ")}`).join("\n");
+      try { await navigator.clipboard.writeText(txt); informer("Liste copiée."); }
+      catch { informer(txt, 15000); }
+      break;
+    }
+    case "exporter": {
+      const { cleApi, ...reglages } = etat.reglages;
+      const json = JSON.stringify({ ...etat, reglages }, null, 2);
+      const downloads = await capacite("downloads");
+      if (downloads) {
+        try { await downloads.save({ filename: "mes-traitements.json", data: json }); }
+        catch (err) { if (err?.code !== "declined") informer("Sauvegarde impossible : " + (err?.message || err)); }
+      } else if (estClaude) {
+        informer("Le téléchargement n'est pas disponible dans cette vue.");
+      } else {
+        const lien = document.createElement("a");
+        lien.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+        lien.download = "mes-traitements.json"; lien.click();
+      }
+      break;
+    }
+    case "effacer":
+      if (await confirmer("Effacer tous les traitements, l'historique et les réglages ?", "Tout effacer")) { await toutEffacer(); informer("Données effacées."); }
+      break;
+    case "fermer-avertissement": etat.reglages.avertissementLu = true; sauver(); $("#avertissement").remove(); break;
+  }
+});
+
+document.addEventListener("change", async (e) => {
+  const el = e.target;
+  if (el.id === "photo" && el.files[0]) {
+    photo = await preparerImage(el.files[0]);
+    brouillon = [];
+    rendre();
+    return;
+  }
+  if (el.id === "import" && el.files[0]) {
+    try {
+      const d = JSON.parse(await el.files[0].text());
+      if (!Array.isArray(d.traitements)) throw new Error("fichier invalide");
+      remplacerDonnees(d);
+      informer("Données restaurées.");
+    } catch (err) { informer("Import impossible : " + err.message); }
+    return;
+  }
+  switch (el.dataset.action) {
+    case "cocher": basculerPrise(dateVue, el.dataset.id, el.dataset.heure); break;
+    case "alarmes":
+      if (el.checked && !estClaude) {
+        const p = await demanderPermission();
+        if (p === "denied") informer("Les notifications sont bloquées : les rappels s'afficheront uniquement dans l'application ouverte. Pensez aux alarmes du téléphone.", 8000);
+      }
+      etat.reglages.alarmes = el.checked; sauver(); break;
+    case "son": etat.reglages.son = el.checked; sauver(); break;
+    case "rappel": etat.reglages.rappelMinutes = Number(el.value); sauver(); break;
+    case "heure": if (el.value) { etat.reglages.heures[el.dataset.moment] = el.value; sauver(); } break;
+  }
+});
+
+// ─────────────────────── Démarrage ───────────────────────
+abonner(() => { planifierAlarmes(); rendre(); });
+
+if (!etat.reglages.avertissementLu) {
+  document.body.insertAdjacentHTML("afterbegin", `
+    <div id="avertissement" class="bandeau">
+      <p><strong>Important :</strong> cette application est une aide à l'organisation de vos traitements. Elle ne remplace pas l'avis de votre médecin ou pharmacien. Vérifiez toujours les informations lues sur l'ordonnance.</p>
+      <button class="bouton" data-action="fermer-avertissement">J'ai compris</button>
+    </div>`);
+}
+
+if (!estClaude && "serviceWorker" in navigator && location.protocol !== "file:") {
+  navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW", e));
+}
+
+// Re-programme les alarmes au retour sur l'application
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") { planifierAlarmes(); if (vue === "planning") rendre(); }
+});
+
+planifierAlarmes();
+allerA(etat.traitements.length ? "planning" : "ordonnance");
+
+// Fonctions qui dépendent de la plateforme : activées dès qu'elles répondent
+majMoteurIA().then(() => { if (vue !== "planning") rendre(); });
+if (estClaude) {
+  connecterCompte().then((ok) => {
+    if (etat.reglages.avertissementLu) document.getElementById("avertissement")?.remove();
+    if (ok && vue === "ordonnance" && etat.traitements.length && !photo && !brouillon.length) allerA("planning");
+  });
+}
+
+</script>

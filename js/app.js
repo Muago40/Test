@@ -1,11 +1,13 @@
 import { etat, abonner, sauver, aujourdhui, ajouterTraitement, majTraitement, supprimerTraitement,
-  basculerPrise, clePrise, toutEffacer } from "./store.js";
+  basculerPrise, clePrise, toutEffacer, connecterCompte, compteConnecte, remplacerDonnees } from "./store.js";
+import { estClaude, capacite, iaIntegreeImages } from "./plateforme.js";
+import { informer, confirmer } from "./ui.js";
 import { MEDICAMENTS, trouverParId } from "./data/medicaments.js";
 import { analyserInteractions, NIVEAUX } from "./data/interactions.js";
 import { analyserOrdonnance, detecterMedicament, MOMENTS } from "./parser.js";
-import { preparerImage, ocrLocal, lireOrdonnanceIA, genererFicheIA, analyserInteractionsIA } from "./ocr.js";
+import { preparerImage, ocrLocal, lireOrdonnanceIA, genererFicheIA, analyserInteractionsIA, moteurIA } from "./ocr.js";
 import { prisesDuJour, resumePosologie, libelleQuantite, libelleMoment, dateFin, estActif } from "./planning.js";
-import { planifierAlarmes, demanderPermission, notifier, telechargerICS, notificationsSupportees, nombreAlarmesProgrammees } from "./alarmes.js";
+import { planifierAlarmes, demanderPermission, notifier, telechargerICS, notificationsSupportees, nombreAlarmesProgrammees, horairesAlarmes } from "./alarmes.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -16,6 +18,13 @@ let dateVue = aujourdhui();
 let brouillon = []; // médicaments détectés en attente de validation
 let photo = null;
 let interactionsIA = null;
+let moteur = null;        // "integree" | "cle" | null
+let lectureImageIA = false;
+
+async function majMoteurIA() {
+  moteur = await moteurIA(etat.reglages.cleApi);
+  lectureImageIA = moteur === "cle" || (moteur === "integree" && await iaIntegreeImages());
+}
 
 // ─────────────────────── Navigation ───────────────────────
 function allerA(v) {
@@ -37,7 +46,8 @@ function rendre() {
 
 // ─────────────────────── Vue : ordonnance ───────────────────────
 function vueOrdonnance() {
-  const cle = !!etat.reglages.cleApi;
+  const ia = lectureImageIA;
+  const ocrLocalPossible = !estClaude; // Tesseract télécharge ses modèles : impossible dans une page claude.ai
   return `
   <section class="carte">
     <h2>📷 Scanner une ordonnance</h2>
@@ -49,10 +59,12 @@ function vueOrdonnance() {
     ${photo ? `<img src="${photo.dataUrl}" class="apercu" alt="Ordonnance">` : ""}
     ${photo ? `
       <div class="ligne-boutons">
-        <button class="bouton principal" data-action="analyser-local">Lire (OCR local)</button>
-        <button class="bouton ${cle ? "principal" : ""}" data-action="analyser-ia" ${cle ? "" : "disabled"} title="${cle ? "" : "Ajoutez une clé API dans Réglages"}">Lire avec l'IA ✨</button>
+        ${ia ? `<button class="bouton principal" data-action="analyser-ia">✨ Lire l'ordonnance avec l'IA</button>` : ""}
+        ${ocrLocalPossible ? `<button class="bouton ${ia ? "" : "principal"}" data-action="analyser-local">Lire (OCR local)</button>` : ""}
       </div>
-      <p class="aide">${cle ? "L'IA lit aussi les ordonnances manuscrites." : "L'OCR local fonctionne bien sur les ordonnances imprimées. Pour les ordonnances manuscrites, configurez la lecture IA dans Réglages."}</p>` : ""}
+      <p class="aide">${ia ? "L'IA lit aussi les ordonnances manuscrites." + (moteur === "integree" ? " La première fois, claude.ai vous demande d'autoriser la page à utiliser Claude." : "") :
+        ocrLocalPossible ? "L'OCR local fonctionne bien sur les ordonnances imprimées. Pour les ordonnances manuscrites, configurez la lecture IA dans l'onglet Alarmes." :
+        "La lecture d'image n'est pas disponible ici : saisissez le texte de l'ordonnance ci-dessous."}</p>` : ""}
     <div id="progression"></div>
   </section>
 
@@ -100,16 +112,21 @@ async function analyserPhoto(mode) {
   try {
     if (mode === "ia") {
       prog.innerHTML = `<div class="chargement">Lecture par l'IA en cours…</div>`;
-      const r = await lireOrdonnanceIA(etat.reglages.cleApi, photo.base64);
+      const r = await lireOrdonnanceIA(etat.reglages.cleApi, photo);
+      if (!r.medicaments.length) {
+        prog.innerHTML = `<div class="alerte warning">Aucun médicament trouvé sur cette photo. Essayez une photo plus nette, bien éclairée et cadrée sur l'ordonnance.</div>`;
+        return;
+      }
       brouillon = r.medicaments.map((m) => {
         const det = detecterMedicament(m.dci + " " + m.nom);
         return {
-          nom: [m.nom, m.dosage].filter(Boolean).join(" "),
+          nom: [m.nom, m.dosage && !String(m.nom).includes(m.dosage) ? m.dosage : ""].filter(Boolean).join(" "),
           medId: det?.med.id || null,
           dosage: m.dosage, quantite: m.quantite || 1, unite: m.unite || "prise",
-          moments: m.moments, heures: m.heures, siBesoin: m.siBesoin,
+          moments: (m.moments || []).filter((x) => MOMENTS.includes(x)),
+          heures: (m.heures || []).filter((h) => /^\d{2}:\d{2}$/.test(h)), siBesoin: !!m.siBesoin,
           dureeJours: m.dureeJours, hebdomadaire: m.hebdomadaire,
-          remarques: m.remarques, texteSource: m.texteSource, certitude: "haute",
+          remarques: m.remarques || [], texteSource: m.texteSource, certitude: "haute",
           debut: aujourdhui(),
         };
       });
@@ -233,7 +250,7 @@ function vueFiches() {
   <section class="carte no-print">
     <h2>📘 Fiches de mes traitements</h2>
     <p class="aide">Synthèse indicative. Lisez toujours la notice et demandez conseil à votre pharmacien.</p>
-    <button class="bouton" onclick="window.print()">🖨️ Imprimer / PDF</button>
+    ${estClaude ? "" : `<button class="bouton" data-action="imprimer">🖨️ Imprimer / PDF</button>`}
   </section>
   <h1 class="print-only">Mes traitements — ${new Date().toLocaleDateString("fr-FR")}</h1>
   ${etat.traitements.map((t) => {
@@ -254,8 +271,8 @@ function vueFiches() {
         </div>
         ${t.ficheIA && !t.medId ? `<p class="aide">Fiche générée par IA — à vérifier avec votre pharmacien.</p>` : ""}` : `
         <p class="aide">Ce médicament n'est pas dans la base locale.</p>
-        ${etat.reglages.cleApi ? `<button class="bouton principal no-print" data-action="fiche-ia" data-id="${t.id}">✨ Générer la fiche avec l'IA</button>` :
-          `<p class="aide">Vous pouvez l'associer à un médicament de la base (bouton Modifier dans le planning) ou configurer l'IA dans Réglages.</p>`}`}
+        ${moteur ? `<button class="bouton principal no-print" data-action="fiche-ia" data-id="${t.id}">✨ Générer la fiche avec l'IA</button>` :
+          `<p class="aide">Vous pouvez l'associer à un médicament de la base (bouton Modifier dans le planning) ou configurer l'IA dans l'onglet Alarmes.</p>`}`}
     </article>`;
   }).join("")}`;
 }
@@ -292,7 +309,7 @@ function vueInteractions() {
     res.length ? `<section class="carte"><ul class="liste">${res.map(carteInteraction).join("")}</ul></section>` :
     `<section class="carte"><div class="alerte ok">✅ Aucune interaction connue détectée dans la base locale entre ces traitements.</div></section>`}
   ${horsBase.length ? `<section class="carte"><div class="alerte info">Non vérifiés (hors base locale) : ${horsBase.map((i) => esc(i.nom)).join(", ")}.</div></section>` : ""}
-  ${items.length >= 2 && etat.reglages.cleApi ? `
+  ${items.length >= 2 && moteur ? `
     <section class="carte">
       <button class="bouton large" data-action="interactions-ia">✨ Analyse complémentaire par l'IA</button>
       <div id="res-ia">${interactionsIA ? (interactionsIA.length ? `<ul class="liste">${interactionsIA.map(carteInteraction).join("")}</ul>` : `<div class="alerte ok">L'IA n'a pas relevé d'interaction supplémentaire.</div>`) : ""}</div>
@@ -304,40 +321,55 @@ function vueInteractions() {
 function vueReglages() {
   const r = etat.reglages;
   const perm = notificationsSupportees() ? Notification.permission : "unsupported";
+  const horaires = horairesAlarmes();
   return `
   <section class="carte">
-    <h2>⏰ Alarmes</h2>
-    <label class="interrupteur"><input type="checkbox" data-action="alarmes" ${r.alarmes ? "checked" : ""}> Activer les rappels de prise</label>
-    <p class="sous">Notifications : ${{ granted: "autorisées ✅", denied: "bloquées ❌ (à autoriser dans les paramètres du navigateur)", default: "non demandées", unsupported: "non supportées par ce navigateur" }[perm]}
-    ${r.alarmes ? ` · ${nombreAlarmesProgrammees()} rappel(s) programmé(s)` : ""}</p>
-    <label class="interrupteur"><input type="checkbox" data-action="son" ${r.son ? "checked" : ""}> Son et vibration</label>
+    <h2>⏰ Rappels de prise</h2>
+    <label class="interrupteur"><input type="checkbox" id="opt-alarmes" data-action="alarmes" ${r.alarmes ? "checked" : ""}> Activer les rappels de prise</label>
+    ${estClaude ? `<p class="sous">Dans cette version, le rappel sonne et s'affiche quand la page est ouverte${r.alarmes ? ` · ${nombreAlarmesProgrammees()} rappel(s) programmé(s)` : ""}.</p>` :
+      `<p class="sous">Notifications : ${{ granted: "autorisées ✅", denied: "bloquées ❌ (à autoriser dans les paramètres du navigateur)", default: "non demandées", unsupported: "non supportées par ce navigateur" }[perm]}${r.alarmes ? ` · ${nombreAlarmesProgrammees()} rappel(s) programmé(s)` : ""}</p>`}
+    <label class="interrupteur"><input type="checkbox" id="opt-son" data-action="son" ${r.son ? "checked" : ""}> Son et vibration</label>
     <label>Relance si non coché après
-      <select data-action="rappel">${[0, 10, 15, 30, 60].map((m) => `<option value="${m}" ${r.rappelMinutes === m ? "selected" : ""}>${m ? m + " min" : "pas de relance"}</option>`).join("")}</select>
+      <select id="opt-rappel" data-action="rappel">${[0, 10, 15, 30, 60].map((m) => `<option value="${m}" ${r.rappelMinutes === m ? "selected" : ""}>${m ? m + " min" : "pas de relance"}</option>`).join("")}</select>
     </label>
     <div class="ligne-boutons">
-      <button class="bouton" data-action="tester">🔔 Tester</button>
-      <button class="bouton principal" data-action="ics">📅 Exporter vers l'agenda (.ics)</button>
+      <button class="bouton" data-action="tester">🔔 Tester le rappel</button>
+      ${estClaude ? "" : `<button class="bouton principal" data-action="ics">📅 Exporter vers l'agenda (.ics)</button>`}
     </div>
-    <p class="aide">Les rappels du navigateur fonctionnent tant que l'application est ouverte (idéalement installée sur l'écran d'accueil). Pour des alarmes garanties même téléphone verrouillé et application fermée, exportez le planning dans l'agenda de votre téléphone : chaque prise y est créée avec une alarme.</p>
+  </section>
+
+  <section class="carte">
+    <h2>📱 Alarmes du téléphone</h2>
+    <p class="aide">Pour être prévenu même téléphone verrouillé et application fermée, créez ces alarmes quotidiennes dans l'application Horloge${estClaude ? "" : " ou importez le fichier agenda ci-dessus"}.</p>
+    ${horaires.length ? `<ul class="liste">${horaires.map((h) => `
+      <li><div class="ligne-titre"><span class="heure">${h.heure}</span></div><div class="sous">${esc(h.noms.join(" · "))}</div></li>`).join("")}</ul>
+      <button class="bouton" data-action="copier-horaires">📋 Copier la liste</button>` :
+      `<p class="sous">Aucune prise programmée aujourd'hui.</p>`}
   </section>
 
   <section class="carte">
     <h2>🕗 Horaires des moments de prise</h2>
     <div class="grille-heures">
-      ${MOMENTS.map((m) => `<label>${libelleMoment(m)}<input type="time" data-action="heure" data-moment="${m}" value="${r.heures[m]}"></label>`).join("")}
+      ${MOMENTS.map((m) => `<label>${libelleMoment(m)}<input type="time" id="heure-${m}" data-action="heure" data-moment="${m}" value="${r.heures[m]}"></label>`).join("")}
     </div>
   </section>
 
+  ${estClaude ? `
+  <section class="carte">
+    <h2>✨ Lecture par IA</h2>
+    <p class="aide">${lectureImageIA ? "Active : la page utilise Claude via votre compte claude.ai, sans clé API." : "L'IA intégrée n'est pas disponible dans cette vue."}</p>
+  </section>` : `
   <section class="carte">
     <h2>✨ Lecture par IA (optionnel)</h2>
     <p class="aide">Avec une clé API Anthropic (Claude), la photo est envoyée à l'API pour une lecture fiable, y compris des ordonnances manuscrites, et pour générer les fiches des médicaments absents de la base. La clé est stockée uniquement sur cet appareil.</p>
     <input type="password" id="cle-api" placeholder="sk-ant-…" value="${esc(r.cleApi)}" autocomplete="off">
     <button class="bouton" data-action="sauver-cle">Enregistrer la clé</button>
-  </section>
+  </section>`}
 
   <section class="carte">
     <h2>🔒 Données</h2>
-    <p class="aide">Toutes vos données restent dans ce navigateur. Aucune donnée n'est envoyée, sauf la photo lors d'une lecture par IA.</p>
+    <p class="aide">${compteConnecte() ? "Vos données sont sauvegardées de façon privée sur votre compte claude.ai (personne d'autre n'y a accès) et sur cet appareil." :
+      "Toutes vos données restent dans ce navigateur. Aucune donnée n'est envoyée, sauf la photo lors d'une lecture par IA."}</p>
     <div class="ligne-boutons">
       <button class="bouton" data-action="exporter">Sauvegarder (JSON)</button>
       <label class="bouton">Restaurer<input type="file" accept="application/json" id="import" hidden></label>
@@ -417,7 +449,7 @@ function ouvrirFormulaire(t, onValider) {
       remarques: String(fd.get("remarques") || "").split("·").map((s) => s.trim()).filter(Boolean),
     };
     if (!res.siBesoin && !res.moments.length && !res.heures.length) {
-      alert("Indiquez au moins un moment de prise, des heures, ou cochez « si besoin ».");
+      informer("Indiquez au moins un moment de prise, des heures, ou cochez « si besoin ».");
       return;
     }
     dlg.close();
@@ -443,7 +475,7 @@ document.addEventListener("click", async (e) => {
     case "analyser-texte": {
       const txt = $("#texte-ordo").value;
       brouillon = analyserOrdonnance(txt);
-      if (!brouillon.length) alert("Aucun médicament de la base reconnu. Ajoutez-les manuellement.");
+      if (!brouillon.length) informer("Aucun médicament de la base reconnu. Ajoutez-les manuellement.");
       rendre(); break;
     }
     case "editer-brouillon": {
@@ -464,38 +496,58 @@ document.addEventListener("click", async (e) => {
       break;
     }
     case "supprimer":
-      if (confirm("Supprimer ce traitement et son historique ?")) supprimerTraitement(el.dataset.id);
+      if (await confirmer("Supprimer ce traitement et son historique ?", "Supprimer")) supprimerTraitement(el.dataset.id);
       break;
     case "fiche-ia": {
       const t = etat.traitements.find((x) => x.id === el.dataset.id);
       el.disabled = true; el.textContent = "Génération…";
       try { majTraitement(t.id, { ficheIA: await genererFicheIA(etat.reglages.cleApi, t.nom) }); }
-      catch (err) { alert("Erreur : " + err.message); rendre(); }
+      catch (err) { informer("Erreur : " + err.message); rendre(); }
       break;
     }
     case "interactions-ia": {
       el.disabled = true; el.textContent = "Analyse en cours…";
       try {
         const r = await analyserInteractionsIA(etat.reglages.cleApi, itemsInteractions().map((i) => i.nom));
-        interactionsIA = r.interactions;
-      } catch (err) { alert("Erreur : " + err.message); }
+        interactionsIA = r;
+      } catch (err) { informer("Erreur : " + err.message); }
       rendre(); break;
     }
     case "tester": {
-      const p = await demanderPermission();
-      notifier("💊 Test de rappel", p === "granted" ? "Les notifications fonctionnent." : "Notifications non autorisées : rappel affiché dans l'application.", "test");
+      const p = estClaude ? "unsupported" : await demanderPermission();
+      notifier("💊 Test de rappel", p === "granted" ? "Les notifications fonctionnent." : "Le rappel s'affiche dans l'application quand elle est ouverte.", "test");
       break;
     }
     case "ics": telechargerICS(); break;
-    case "sauver-cle": etat.reglages.cleApi = $("#cle-api").value.trim(); sauver(); alert("Clé enregistrée sur cet appareil."); break;
-    case "exporter": {
-      const { cleApi, ...reglages } = etat.reglages;
-      const blob = new Blob([JSON.stringify({ ...etat, reglages }, null, 2)], { type: "application/json" });
-      const lien = document.createElement("a");
-      lien.href = URL.createObjectURL(blob); lien.download = "mes-traitements.json"; lien.click();
+    case "sauver-cle":
+      etat.reglages.cleApi = $("#cle-api").value.trim();
+      await majMoteurIA(); sauver(); informer("Clé enregistrée sur cet appareil."); break;
+    case "imprimer": window.print(); break;
+    case "copier-horaires": {
+      const txt = horairesAlarmes().map((h) => `${h.heure} : ${h.noms.join(", ")}`).join("\n");
+      try { await navigator.clipboard.writeText(txt); informer("Liste copiée."); }
+      catch { informer(txt, 15000); }
       break;
     }
-    case "effacer": if (confirm("Effacer tous les traitements, l'historique et les réglages ?")) toutEffacer(); break;
+    case "exporter": {
+      const { cleApi, ...reglages } = etat.reglages;
+      const json = JSON.stringify({ ...etat, reglages }, null, 2);
+      const downloads = await capacite("downloads");
+      if (downloads) {
+        try { await downloads.save({ filename: "mes-traitements.json", data: json }); }
+        catch (err) { if (err?.code !== "declined") informer("Sauvegarde impossible : " + (err?.message || err)); }
+      } else if (estClaude) {
+        informer("Le téléchargement n'est pas disponible dans cette vue.");
+      } else {
+        const lien = document.createElement("a");
+        lien.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+        lien.download = "mes-traitements.json"; lien.click();
+      }
+      break;
+    }
+    case "effacer":
+      if (await confirmer("Effacer tous les traitements, l'historique et les réglages ?", "Tout effacer")) { await toutEffacer(); informer("Données effacées."); }
+      break;
     case "fermer-avertissement": etat.reglages.avertissementLu = true; sauver(); $("#avertissement").remove(); break;
   }
 });
@@ -511,19 +563,18 @@ document.addEventListener("change", async (e) => {
   if (el.id === "import" && el.files[0]) {
     try {
       const d = JSON.parse(await el.files[0].text());
-      if (!Array.isArray(d.traitements)) throw new Error("Fichier invalide");
-      etat.traitements = d.traitements; etat.prises = d.prises || {};
-      Object.assign(etat.reglages, d.reglages || {});
-      sauver();
-    } catch (err) { alert("Import impossible : " + err.message); }
+      if (!Array.isArray(d.traitements)) throw new Error("fichier invalide");
+      remplacerDonnees(d);
+      informer("Données restaurées.");
+    } catch (err) { informer("Import impossible : " + err.message); }
     return;
   }
   switch (el.dataset.action) {
     case "cocher": basculerPrise(dateVue, el.dataset.id, el.dataset.heure); break;
     case "alarmes":
-      if (el.checked) {
+      if (el.checked && !estClaude) {
         const p = await demanderPermission();
-        if (p === "denied") alert("Les notifications sont bloquées : les rappels s'afficheront uniquement dans l'application ouverte. Pensez à l'export agenda.");
+        if (p === "denied") informer("Les notifications sont bloquées : les rappels s'afficheront uniquement dans l'application ouverte. Pensez aux alarmes du téléphone.", 8000);
       }
       etat.reglages.alarmes = el.checked; sauver(); break;
     case "son": etat.reglages.son = el.checked; sauver(); break;
@@ -543,7 +594,7 @@ if (!etat.reglages.avertissementLu) {
     </div>`);
 }
 
-if ("serviceWorker" in navigator && location.protocol !== "file:") {
+if (!estClaude && "serviceWorker" in navigator && location.protocol !== "file:") {
   navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW", e));
 }
 
@@ -554,3 +605,12 @@ document.addEventListener("visibilitychange", () => {
 
 planifierAlarmes();
 allerA(etat.traitements.length ? "planning" : "ordonnance");
+
+// Fonctions qui dépendent de la plateforme : activées dès qu'elles répondent
+majMoteurIA().then(() => { if (vue !== "planning") rendre(); });
+if (estClaude) {
+  connecterCompte().then((ok) => {
+    if (etat.reglages.avertissementLu) document.getElementById("avertissement")?.remove();
+    if (ok && vue === "ordonnance" && etat.traitements.length && !photo && !brouillon.length) allerA("planning");
+  });
+}
