@@ -7,6 +7,7 @@
 <title>Gemmes &amp; Rochers</title>
 <style>
   :root {
+    color-scheme: dark;
     --bg: #0b0910;
     --panel: #17131f;
     --fg: #f3ead8;
@@ -23,9 +24,10 @@
     -webkit-tap-highlight-color: transparent;
   }
   #hud {
-    position: fixed; top: 0; left: 0; right: 0; height: 44px; z-index: 2;
-    display: flex; align-items: center; gap: 14px; padding: 0 12px;
-    padding-top: env(safe-area-inset-top);
+    position: fixed; top: 0; left: 0; right: 0; z-index: 2;
+    height: calc(44px + env(safe-area-inset-top, 0px));
+    display: flex; align-items: center; gap: 14px;
+    padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
     background: var(--panel); border-bottom: 1px solid #2a2433;
     font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap;
   }
@@ -40,9 +42,9 @@
   #hud .lives { color: var(--danger); letter-spacing: 1px; }
   canvas { position: fixed; left: 0; top: 44px; display: block; }
   #pad {
-    position: fixed; left: 0; right: 0; bottom: 0; height: 190px; z-index: 2;
+    position: fixed; left: 0; right: 0; bottom: 0; height: calc(190px + env(safe-area-inset-bottom, 0px)); z-index: 2;
     display: none; align-items: center; justify-content: center; gap: 28px;
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     background: var(--panel); border-top: 1px solid #2a2433;
   }
   body.touch #pad { display: flex; }
@@ -506,8 +508,10 @@ const sprites = {};
 
 function resize() {
   dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const padH = document.body.classList.contains("touch") ? 190 : 0;
-  viewW = innerWidth; viewH = innerHeight - 44 - padH;
+  const hudH = document.getElementById("hud").offsetHeight;
+  const padH = document.body.classList.contains("touch") ? document.getElementById("pad").offsetHeight : 0;
+  viewW = innerWidth; viewH = Math.max(100, innerHeight - hudH - padH);
+  cv.style.top = hudH + "px";
   cv.style.width = viewW + "px"; cv.style.height = viewH + "px";
   cv.width = Math.round(viewW * dpr); cv.height = Math.round(viewH * dpr);
   TS = Math.max(22, Math.min(48, Math.floor(Math.min(viewW / 14, viewH / 12))));
