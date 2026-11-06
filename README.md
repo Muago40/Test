@@ -73,3 +73,7 @@ js/data/interactions.js règles d'interactions
 - Aide à l'organisation, **pas un dispositif médical**. Vérifiez toujours la lecture de l'ordonnance et demandez conseil à votre pharmacien.
 - La base locale et les règles d'interactions couvrent les médicaments et situations les plus courants, pas l'exhaustivité du Vidal / Thésaurus ANSM.
 - Les notifications web ne sont garanties que si l'application est ouverte (limite des navigateurs, surtout sur iOS) : utilisez l'export agenda pour des alarmes fiables.
+
+## 🎮 Bonus : Gemmes & Rochers
+
+Petit jeu de mine (genre « creuse et évite les rochers ») dans [`jeu/index.html`](jeu/index.html) : un seul fichier, aucune dépendance, jouable au clavier (flèches / ZQSD) ou au doigt sur téléphone. Niveaux générés à l'infini, de plus en plus difficiles.
